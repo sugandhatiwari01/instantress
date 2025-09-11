@@ -96,7 +96,16 @@ function App() {
     Object.entries(data.categorizedSkills || {}).forEach(([category, items]) => {
       html += `<h3>${category}</h3><ul>${(items || []).map(s => `<li>${s}</li>`).join("") || "<li>No items</li>"}</ul>`;
     });
-    html += `<h2>Projects</h2>${(data.bestProjects || []).map(p => `<p><strong>${p.name}</strong> - ${p.description} (<a href="${p.url}">Link</a>, Stars: ${p.stars})</p>`).join("") || "<p>No projects</p>"}`;
+  html += `<h2>Projects</h2>` + 
+  ((data.bestProjects && data.bestProjects.length > 0)
+    ? data.bestProjects.map(p => 
+        `<p><strong>${p.name}</strong> - ${p.description} 
+         (<a href="${p.url}">Link</a>, Stars: ${p.stars})</p>`
+      ).join("")
+    : "<p>No projects</p>");
+
+
+
     html += `<h2>Experience</h2>${(data.workExperience || []).map(exp => `<p><strong>${exp.title} at ${exp.company}</strong> (${exp.dates})<br>${exp.description}</p>`).join("") || "<p>No experience</p>"}`;
     html += `<h2>Education</h2><p>${data.education || "No education"}</p>`;
     return html;
