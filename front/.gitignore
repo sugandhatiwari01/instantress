@@ -1,0 +1,8 @@
+# Node modules
+front/node_modules/
+
+# Build output
+front/build/
+
+# Logs
+*.log
