@@ -67,36 +67,6 @@ app.post("/api/process-data", async (req, res) => {
       "Tools/Other": ["Git", "GitHub", "Figma", "Canva", "VSCode"].filter(lang => allLanguages.includes(lang))
     };
 
-    // Select 2 Best Projects (prioritize full-stack, descriptions, recency)
- // Inside the /api/process-data endpoint, replace the fallback logic
-// Select 2 Best Projects (prioritize full-stack, descriptions, recency)
-const bestProjects = repos
-  .filter(r => !r.fork) // ignore forks
-  .sort((a, b) => {
-    const scoreA =
-      (a.description?.toLowerCase().includes("app") || a.description?.toLowerCase().includes("portal") ? 10 : 0) +
-      (["JavaScript", "Python", "Java"].includes(a.language) ? 5 : 0) +
-      a.stargazers_count;
-    const scoreB =
-      (b.description?.toLowerCase().includes("app") || b.description?.toLowerCase().includes("portal") ? 10 : 0) +
-      (["JavaScript", "Python", "Java"].includes(b.language) ? 5 : 0) +
-      b.stargazers_count;
-    return scoreB - scoreA;
-  })
-  .slice(0, 2)
-  .map(r => ({
-    name: r.name,
-    description: r.description || "No description provided",
-    url: r.html_url,
-    stars: r.stargazers_count,
-    language: r.language || "Not specified",
-  }));
-
-
-
-
-
-    // Gemini Prompt (general for any position)
 
     async function safeGenerateContent(prompt, retries = 3, delay = 2000) {
   for (let i = 0; i < retries; i++) {
@@ -110,6 +80,103 @@ const bestProjects = repos
   }
 }
 
+    
+
+async function summarizeReadme(repoName, readmeText) {
+  const prompt = `
+  Summarize the following GitHub project README into a clear, concise description and show plus points only
+  (2-3 sentences, avoid marketing language, keep it technical).
+
+  Project: ${repoName}
+  README:
+  ${readmeText}
+  `;
+
+  try {
+    const result = await safeGenerateContent(prompt);
+    return result.response.text().trim();
+  } catch (err) {
+    console.error(`Error summarizing README for ${repoName}:`, err);
+    return "No description available";
+  }
+}
+
+
+function getLanguageScore(languages) {
+  // languages is an array of repo languages
+  let score = 0;
+  languages.forEach(lang => {
+    lang = lang.toLowerCase();
+    if (/typescript|react|next|node|django|spring|rust|go|kotlin|swift|scala/.test(lang)) {
+      score += 10; // advanced
+    } else if (/java|c\+\+|c#|python|php/.test(lang)) {
+      score += 7;  // intermediate
+    } else if (/html|css|markdown|shell|sql/.test(lang)) {
+      score += 3;  // basic
+    } else {
+      score += 5;  // unknown, give medium default
+    }
+  });
+  return score;
+}
+
+
+
+async function fetchRepoLanguages(owner, repo) {
+  try {
+    const res = await axios.get(`https://api.github.com/repos/${owner}/${repo}/languages`);
+    // returns object like {JavaScript: 12345, HTML: 2345}
+    return Object.keys(res.data);
+  } catch (err) {
+    console.warn(`Error fetching languages for ${repo}:`, err.message);
+    return [];
+  }
+}
+
+
+
+    // Select 2 Best Projects (prioritize full-stack, descriptions, recency)
+ // Inside the /api/process-data endpoint, replace the fallback logic
+// Select 2 Best Projects (prioritize full-stack, descriptions, recency)
+// Correct: await Promise.all first
+let allProjects = await Promise.all(
+  repos
+    .filter(r => !r.fork)
+    .map(async (r) => {
+      const languages = await fetchRepoLanguages(githubUser, r.name);
+      const langScore = getLanguageScore(languages);
+
+      const recencyScore = Math.max(
+        0,
+        6 - (Date.now() - new Date(r.pushed_at)) / (1000 * 60 * 60 * 24 * 30)
+      );
+      const descScore = r.description ? 3 : 0;
+
+      const totalScore = langScore + recencyScore + descScore;
+
+      let readmeSummary = r.description || "No description available";
+      try {
+        const readmeRes = await axios.get(
+          `https://api.github.com/repos/${githubUser}/${r.name}/readme`,
+          { headers: { Accept: "application/vnd.github.v3.raw" } }
+        );
+        readmeSummary = await summarizeReadme(r.name, readmeRes.data);
+      } catch {
+        // fallback already assigned
+      }
+
+      return { ...r, description: readmeSummary, score: totalScore };
+    })
+);
+
+// Sort the resolved array
+allProjects.sort((a, b) => b.score - a.score);
+const bestProjects = allProjects.slice(0, 2);
+
+
+
+
+    // Gemini Prompt (general for any position)
 
     const prompt = `
       Format this developer data into a professional resume summary (3-5 sentences) for a developer of any position (entry-level to senior).
