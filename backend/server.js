@@ -69,29 +69,48 @@ app.post("/api/process-data", async (req, res) => {
 
     // Select 2 Best Projects (prioritize full-stack, descriptions, recency)
  // Inside the /api/process-data endpoint, replace the fallback logic
+// Select 2 Best Projects (prioritize full-stack, descriptions, recency)
 const bestProjects = repos
-  .filter(r => r.description && r.language) // Ensure there's a description and language
+  .filter(r => !r.fork) // ignore forks
   .sort((a, b) => {
-    const scoreA = (a.description.includes("app") || a.description.includes("portal") ? 10 : 0) + 
-                   (a.language && ["JavaScript", "Python", "Java"].includes(a.language) ? 5 : 0) + 
-                   a.stargazers_count;
-    const scoreB = (b.description.includes("app") || b.description.includes("portal") ? 10 : 0) + 
-                   (b.language && ["JavaScript", "Python", "Java"].includes(b.language) ? 5 : 0) + 
-                   b.stargazers_count;
+    const scoreA =
+      (a.description?.toLowerCase().includes("app") || a.description?.toLowerCase().includes("portal") ? 10 : 0) +
+      (["JavaScript", "Python", "Java"].includes(a.language) ? 5 : 0) +
+      a.stargazers_count;
+    const scoreB =
+      (b.description?.toLowerCase().includes("app") || b.description?.toLowerCase().includes("portal") ? 10 : 0) +
+      (["JavaScript", "Python", "Java"].includes(b.language) ? 5 : 0) +
+      b.stargazers_count;
     return scoreB - scoreA;
   })
   .slice(0, 2)
-  .map((r) => ({
+  .map(r => ({
     name: r.name,
-    description: r.description || `${r.language}-based web application`,
+    description: r.description || "No description provided",
     url: r.html_url,
     stars: r.stargazers_count,
-    language: r.language,
+    language: r.language || "Not specified",
   }));
 
 
 
+
+
     // Gemini Prompt (general for any position)
+
+    async function safeGenerateContent(prompt, retries = 3, delay = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await model.generateContent(prompt);
+    } catch (err) {
+      if (i === retries - 1) throw err; // final failure
+      console.warn(`Gemini call failed (attempt ${i + 1}), retrying...`);
+      await new Promise(res => setTimeout(res, delay * (i + 1)));
+    }
+  }
+}
+
+
     const prompt = `
       Format this developer data into a professional resume summary (3-5 sentences) for a developer of any position (entry-level to senior).
       Skills: ${JSON.stringify(categorizedSkills)}.
@@ -100,7 +119,7 @@ const bestProjects = repos
       Education: ${education.degree ? `${education.degree}, ${education.institution} (${education.year || education.dates})` : "Not provided"}.
       Output plain JSON (no Markdown or code blocks): { summary: "string", enhancedExperience: [array of enhanced entries with quantifiable achievements] }
     `;
-    const result = await model.generateContent(prompt);
+    const result = await safeGenerateContent(prompt);
     let aiOutputText = result.response.text().replace(/```json\n|\n```/g, "").trim();
     const aiOutput = JSON.parse(aiOutputText);
 
