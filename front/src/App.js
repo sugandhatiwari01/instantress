@@ -41,7 +41,7 @@ function App() {
     const res = await fetch("http://localhost:4000/api/export-pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, template: selectedTemplate, githubUser, education }),
+      body: JSON.stringify({ ...data, template: selectedTemplate }),
     });
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
@@ -55,7 +55,7 @@ function App() {
     const res = await fetch("http://localhost:4000/api/export-docx", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, template: selectedTemplate, githubUser, education }),
+      body: JSON.stringify({ ...data, template: selectedTemplate }),
     });
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
@@ -69,7 +69,7 @@ function App() {
     const res = await fetch("http://localhost:4000/api/export-portfolio", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, template: selectedTemplate, githubUser, education }),
+      body: JSON.stringify({ ...data, template: selectedTemplate }),
     });
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
@@ -90,24 +90,64 @@ function App() {
   }, [data, selectedTemplate]);
 
   const getTemplateHTML = (data, template) => {
-    let html = `<h1>${data.githubUser || "Your Name"}'s Resume</h1>`;
-    html += `<p>${data.summary || "Summary placeholder"}</p>`;
-    html += `<h2>Skills</h2>`;
+    // For preview, we can reuse a simplified version of the backend HTML generation, but add the styles inline
+    const styles = {
+      Minimal: `
+        h1 { text-align: center; margin-bottom: 20px; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 30px; }
+        h3 { margin-top: 15px; font-size: 1.1em; }
+        ul { list-style-type: disc; padding-left: 20px; }
+        li { margin-bottom: 5px; }
+        .section { margin-bottom: 20px; }
+        .project { margin-bottom: 15px; }
+        .project strong { display: block; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .placeholder { color: #888; font-style: italic; }
+      `,
+      "ATS-friendly": `
+        h1 { font-size: 14pt; font-weight: bold; margin-bottom: 10pt; text-align: left; }
+        h2 { font-size: 12pt; font-weight: bold; margin-top: 20pt; margin-bottom: 5pt; }
+        h3 { font-size: 11pt; font-weight: bold; margin-top: 10pt; margin-bottom: 3pt; }
+        ul { list-style-type: disc; margin-left: 20pt; padding-left: 0; }
+        li { margin-bottom: 5pt; }
+        p { margin-bottom: 10pt; }
+        .placeholder { color: #666; font-style: italic; }
+        .section { margin-bottom: 15pt; }
+        .project { margin-bottom: 10pt; }
+        a { color: #000; text-decoration: underline; }
+      `,
+      Modern: `
+        h1 { text-align: center; color: #007bff; margin-bottom: 30px; font-size: 2em; }
+        h2 { color: #343a40; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-top: 40px; font-size: 1.5em; }
+        h3 { color: #495057; margin-top: 20px; font-size: 1.2em; }
+        ul { list-style-type: none; padding-left: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+        li { background: #e9ecef; padding: 5px 10px; border-radius: 4px; }
+        .section { margin-bottom: 30px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .project { margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px; }
+        .project strong { font-size: 1.1em; color: #007bff; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .placeholder { color: #6c757d; font-style: italic; }
+      `,
+    };
+    let html = `<style>${styles[template] || styles.Minimal}</style>`;
+    html += `<h1>${data.githubUser || "Your Name"}'s Resume</h1>`;
+    html += `<div class="section"><p>${data.summary || "Summary placeholder"}</p></div>`;
+    html += `<div class="section"><h2>Skills</h2>`;
     Object.entries(data.categorizedSkills || {}).forEach(([category, items]) => {
       html += `<h3>${category}</h3><ul>${(items || []).map(s => `<li>${s}</li>`).join("") || "<li>No items</li>"}</ul>`;
     });
-  html += `<h2>Projects</h2>` + 
-  ((data.bestProjects && data.bestProjects.length > 0)
-    ? data.bestProjects.map(p => 
-        `<p><strong>${p.name}</strong> - ${p.description} 
-         (<a href="${p.url}">Link</a>, Stars: ${p.stars})</p>`
-      ).join("")
-    : "<p>No projects</p>");
-
-
-
-    html += `<h2>Experience</h2>${(data.workExperience || []).map(exp => `<p><strong>${exp.title} at ${exp.company}</strong> (${exp.dates})<br>${exp.description}</p>`).join("") || "<p>No experience</p>"}`;
-    html += `<h2>Education</h2><p>${data.education || "No education"}</p>`;
+    html += `</div>`;
+    html += `<div class="section"><h2>Projects</h2>` + 
+    ((data.bestProjects && data.bestProjects.length > 0)
+      ? data.bestProjects.map(p => 
+          `<div class="project"><strong>${p.name}</strong> - ${p.description.replace(/\n/g, '<br>')} 
+           (<a href="${p.html_url}">Link</a>, Stars: ${p.stargazers_count})</div>`
+        ).join("")
+      : "<p>No projects</p>") + `</div>`;
+    html += `<div class="section"><h2>Experience</h2>${(data.workExperience || []).map(exp => `<p><strong>${exp.title} at ${exp.company}</strong> (${exp.dates})<br>${exp.description}</p>`).join("") || "<p>No experience</p>"}</div>`;
+    html += `<div class="section"><h2>Education</h2><p>${data.education || "No education"}</p></div>`;
     return html;
   };
 
