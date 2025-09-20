@@ -83,14 +83,19 @@ app.post("/api/process-data", async (req, res) => {
     
 
 async function summarizeReadme(repoName, readmeText) {
-  const prompt = `
-  Summarize the following GitHub project README into a clear, concise description and show plus points only
-  (2-3 sentences, avoid marketing language, keep it technical).
+const prompt = `
+Summarize the following GitHub project README into an ATS-friendly project description. 
+- Limit to 2–3 bullet points. 
+- Focus on technical details, programming languages, frameworks, libraries, and tools used. 
+- Emphasize achievements, problem-solving, and contributions (plus points). 
+- Keep it clear, concise, and suitable for a resume. 
+- Avoid marketing or promotional language.
 
-  Project: ${repoName}
-  README:
-  ${readmeText}
-  `;
+Project: ${repoName}
+README:
+${readmeText}
+`;
+
 
   try {
     const result = await safeGenerateContent(prompt);
