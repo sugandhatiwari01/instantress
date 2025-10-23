@@ -1,6 +1,6 @@
 # Node modules
 front/node_modules/
-
+front/node_modules/.cache
 # Build output
 front/build/
 
