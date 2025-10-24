@@ -188,6 +188,9 @@ async function fetchRepoLanguages(owner, repo) {
     return Object.keys(res.data);
   } catch (err) {
     console.warn(`Error fetching languages for ${owner}/${repo}:`, err.message);
+    if (err.response?.status === 403) {
+      console.warn("Rate limit exceeded for languages API");
+    }
     return [];
   }
 }
@@ -237,12 +240,24 @@ app.post("/api/process-data", async (req, res) => {
         return res.status(400).json({ error: `Items for section ${title} must be an array` });
       }
     }
-    // Fetch GitHub repos
-    const githubRes = await axios.get(`https://api.github.com/users/${githubUsername}/repos`, {
-      headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader },
-    });
-    if (!githubRes.data) throw new Error("GitHub user not found");
-    const repos = githubRes.data;
+    // Fetch GitHub repos with error handling
+    let repos = [];
+    try {
+      const githubRes = await axios.get(`https://api.github.com/users/${githubUsername}/repos`, {
+        headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader },
+      });
+      if (!githubRes.data) throw new Error("GitHub user not found");
+      repos = githubRes.data;
+    } catch (error) {
+      console.error("Error fetching GitHub repos:", error.message);
+      if (error.response?.status === 403) {
+        return res.status(429).json({ error: "GitHub API rate limit exceeded. Please try again later." });
+      }
+      if (error.response?.status === 404) {
+        return res.status(404).json({ error: "GitHub user not found" });
+      }
+      return res.status(500).json({ error: "Failed to fetch GitHub data" });
+    }
 
     let allLanguages = [...new Set(repos.map(r => r.language).filter(Boolean))];
 
@@ -263,9 +278,9 @@ app.post("/api/process-data", async (req, res) => {
         const lcRes = await axios.post("https://leetcode.com/graphql", query, {
           headers: { "Content-Type": "application/json" },
         });
-        const lcData = lcRes.data.data.matchedUser;
+        const lcData = lcRes.data?.data?.matchedUser;
         if (lcData) {
-          if (lcData.submitStats.acSubmissionNum.find(s => s.difficulty === "Medium")?.count > 50) {
+          if (lcData.submitStats?.acSubmissionNum?.find(s => s.difficulty === "Medium")?.count > 50) {
             leetcodeLanguages = ["C", "C++"];
           }
           if (lcData.languageProblemCount) {
@@ -291,30 +306,47 @@ app.post("/api/process-data", async (req, res) => {
       delete customSections.Skills;
     }
 
-    // Process Projects
-    const limitedRepos = repos.filter(r => !r.fork).slice(0, 5);
-    let allProjects = await Promise.all(
-      limitedRepos.map(async r => {
-        const languages = await fetchRepoLanguages(githubUsername, r.name);
-        const langScore = getLanguageScore(languages);
-        const recencyScore = Math.max(0, 6 - (Date.now() - new Date(r.pushed_at)) / (1000 * 60 * 60 * 24 * 30));
-        const descScore = r.description ? 3 : 0;
-        const totalScore = langScore + recencyScore + descScore;
-
-        let readmeSummary = r.description || "No description available";
-        try {
-          const readmeRes = await axios.get(
-            `https://api.github.com/repos/${githubUsername}/${r.name}/readme`,
-            { headers: { Accept: "application/vnd.github.v3.raw", ...githubAuthHeader } },
-          );
-          readmeSummary = await summarizeReadme(r.name, readmeRes.data);
-        } catch (err) {
-          console.warn(`Error fetching README for ${r.name}:`, err.message);
-        }
-
-        return { ...r, description: readmeSummary, score: totalScore };
-      }),
-    );
+    // Process Projects with error handling
+    const limitedRepos = (repos || []).filter(r => !r.fork).slice(0, 5);
+    let allProjects = [];
+    try {
+      allProjects = await Promise.all(
+        limitedRepos.map(async r => {
+          try {
+            const languages = await fetchRepoLanguages(githubUsername, r.name);
+            const langScore = getLanguageScore(languages);
+            const recencyScore = Math.max(0, 6 - (Date.now() - new Date(r.pushed_at)) / (1000 * 60 * 60 * 24 * 30));
+            const descScore = r.description ? 3 : 0;
+            const totalScore = langScore + recencyScore + descScore;
+            let readmeSummary = r.description || "No description available";
+            try {
+              const readmeRes = await axios.get(
+                `https://api.github.com/repos/${githubUsername}/${r.name}/readme`,
+                { headers: { Accept: "application/vnd.github.v3.raw", ...githubAuthHeader } },
+              );
+              readmeSummary = await summarizeReadme(r.name, readmeRes.data);
+            } catch (readmeErr) {
+              console.warn(`Error fetching README for ${r.name}:`, readmeErr.message);
+            }
+            return { ...r, description: readmeSummary, score: totalScore };
+          } catch (err) {
+            console.warn(`Error processing repo ${r.name}:`, err.message);
+            return { 
+              ...r, 
+              description: r.description || "No description available",
+              score: 0
+            };
+          }
+        })
+      );
+    } catch (err) {
+      console.error("Error processing projects:", err.message);
+      allProjects = limitedRepos.map(r => ({
+        ...r,
+        description: r.description || "No description available",
+        score: 0
+      }));
+    }
 
     allProjects.sort((a, b) => b.score - a.score);
     let bestProjects = allProjects.slice(0, 2);
@@ -359,8 +391,8 @@ Return JSON: { "summary": "string", "enhancedExperience": [array of {title, desc
       if (aiText) {
         try {
           aiOutput = JSON.parse(aiText);
-        } catch (err) {
-          console.warn("Groq returned invalid JSON, using fallback.");
+        } catch (parseErr) {
+          console.warn("Groq returned invalid JSON, using fallback:", parseErr.message);
           aiOutput = {
             summary: `A dedicated developer with skills in ${Object.values(categorizedSkills)
               .flat()
@@ -412,7 +444,7 @@ Return JSON: { "summary": "string", "enhancedExperience": [array of {title, desc
   }
 });
 
-// Export PDF, DOCX, Portfolio Endpoints (unchanged from your provided code)
+// Export PDF, DOCX, Portfolio Endpoints (unchanged from your provided code, but noted: PDF just echoes data—add pdfkit or similar for actual generation if needed)
 app.post("/api/export-pdf", async (req, res) => {
   try {
     console.log('Received PDF generation request:', req.body);
