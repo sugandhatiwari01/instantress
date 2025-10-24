@@ -1,5 +1,6 @@
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.js
 
@@ -10,10 +11,18 @@
 /build
 
 # cache files
-.cache/
+**/.cache/
+**/.cache/**
+**/node_modules/.cache/
+**/node_modules/.cache/**
 *.cache
 .npm
 .eslintcache
+
+# development
+**/default-development/
+**/default-development/**
+**/default-development/*.pack
 
 # misc
 .DS_Store
