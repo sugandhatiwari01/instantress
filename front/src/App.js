@@ -24,7 +24,12 @@ function App() {
       const res = await fetch("http://localhost:4000/api/process-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ githubUser, leetcodeUser, workExperience, education }),
+body: JSON.stringify({
+  githubUsername: githubUser, // <-- must match backend
+  leetcodeUser,
+  workExperience,
+  education
+}),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -37,19 +42,41 @@ function App() {
     }
   };
 
-  const downloadResumePDF = async () => {
+const downloadResumePDF = async () => {
+  try {
+    // Optional: show a loading indicator
+    console.log("Generating PDF...");
+
     const res = await fetch("http://localhost:4000/api/export-pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...data, template: selectedTemplate }),
     });
+
+    if (!res.ok) {
+      throw new Error("Failed to generate PDF");
+    }
+
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
+
+    // Create a temporary link to download the PDF
     const a = document.createElement("a");
     a.href = url;
     a.download = `${githubUser || "resume"}.pdf`;
+    document.body.appendChild(a); // append temporarily
     a.click();
-  };
+    document.body.removeChild(a); // remove after download
+
+    window.URL.revokeObjectURL(url); // free memory
+    console.log("PDF downloaded successfully!");
+  } catch (error) {
+    console.error("Error downloading PDF:", error);
+    alert("Failed to download PDF. Please try again.");
+  }
+};
+
+
 
   const downloadResumeDOCX = async () => {
     const res = await fetch("http://localhost:4000/api/export-docx", {
@@ -132,7 +159,7 @@ function App() {
       `,
     };
     let html = `<style>${styles[template] || styles.Minimal}</style>`;
-    html += `<h1>${data.githubUser || "Your Name"}'s Resume</h1>`;
+    html += `<h1>${data.githubUsername || "Anonymous Developer"}'s Resume</h1>`;
     html += `<div class="section"><p>${data.summary || "Summary placeholder"}</p></div>`;
     html += `<div class="section"><h2>Skills</h2>`;
     Object.entries(data.categorizedSkills || {}).forEach(([category, items]) => {
