@@ -26,7 +26,7 @@ const useRemoteAI = process.env.USE_REMOTE_AI !== 'false';
 
 // Define available Groq models
 const GROQ_MODELS = {
-  DEFAULT: 'mixtral-8x7b-32768',  // Using Mixtral as default
+  DEFAULT: 'llama-3.1-8b-instant',  // Using Mixtral as default
   FALLBACK: 'llama2-70b-4096',    // Fallback model
 };
 
