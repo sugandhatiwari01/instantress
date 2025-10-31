@@ -1,12 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
-// Register fonts if needed
-// Font.register({
-//   family: 'Open Sans',
-//   src: 'path-to-font-file'
-// });
-
 const styles = StyleSheet.create({
   page: {
     padding: 40,
@@ -15,7 +9,6 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 15,
-    borderBottom: '1pt solid #EEEEEE',
     paddingBottom: 10
   },
   heading: {
@@ -28,7 +21,7 @@ const styles = StyleSheet.create({
   },
   subheading: {
     fontSize: 16,
-    marginBottom: 8,
+    marginBottom: 10,
     fontWeight: 'bold',
     color: '#34495E',
     textTransform: 'uppercase'
@@ -39,21 +32,25 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginBottom: 3
   },
-  link: {
-    color: '#3498DB',
-    textDecoration: 'underline'
-  },
-  contactInfo: {
-    fontSize: 11,
-    color: '#7F8C8D',
-    marginBottom: 20,
-    textAlign: 'center'
-  },
   projectTitle: {
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 2,
     color: '#2980B9'
+  },
+  projectContainer: {
+    marginBottom: 10,
+    paddingBottom: 5,
+  },
+  technologies: {
+    fontSize: 10,
+    color: '#666666',
+    marginBottom: 4
+  },
+  projectDescription: {
+    fontSize: 11,
+    color: '#2C3E50',
+    marginLeft: 10
   }
 });
 
@@ -104,12 +101,19 @@ const ResumePDF = ({ data }) => {
           <View style={styles.section}>
             <Text style={styles.subheading}>Projects</Text>
             {data.projects.items.map((project, index) => (
-              <View key={index} style={{ marginBottom: 5 }}>
+              <View key={index} style={{ marginBottom: 8 }}>
                 <Text style={[styles.text, { fontWeight: 'bold' }]}>
                   {project.name}
                   {project.stars ? ` (${project.stars} ★)` : ''}
                 </Text>
-                <Text style={styles.text}>{project.description || ''}</Text>
+                {project.technologies && project.technologies.length > 0 && (
+                  <Text style={[styles.text, { color: '#666666', fontSize: 10, marginTop: 2, marginBottom: 3 }]}>
+                    Technologies: {project.technologies.join(' • ')}
+                  </Text>
+                )}
+                {project.description && project.description.split('\n').map((line, i) => (
+                  <Text key={i} style={styles.text}>{line}</Text>
+                ))}
               </View>
             ))}
           </View>
