@@ -1,0 +1,165 @@
+// All the existing imports and setup code remains the same until the process-data endpoint
+
+app.post("/api/process-data", async (req, res) => {
+  try {
+    console.log("Received request body:", JSON.stringify(req.body, null, 2));
+    const { githubUsername, leetcodeUser, workExperience = [], education = {}, contactInfo = {}, customSections = {}, template = "ATS-friendly" } = req.body;
+    console.log("Parsed request data:", { githubUsername, leetcodeUser, template });
+
+    if (!githubUsername) {
+      return res.status(400).json({ error: "GitHub username is required" });
+    }
+
+    // Validate customSections
+    for (const [title, section] of Object.entries(customSections)) {
+      if (!section.content && !section.items) {
+        return res.status(400).json({ error: `Invalid format for section ${title}: must have content or items` });
+      }
+      if (section.items && !Array.isArray(section.items)) {
+        return res.status(400).json({ error: `Items for section ${title} must be an array` });
+      }
+    }
+
+    // Fetch GitHub repos with error handling
+    let repos = [];
+    try {
+      const userRes = await axios.get(`https://api.github.com/users/${githubUsername}`, {
+        headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader },
+      });
+      if (!userRes.data) throw new Error("GitHub user not found");
+
+      const githubRes = await axios.get(`https://api.github.com/users/${githubUsername}/repos`, {
+        headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader },
+        params: {
+          sort: 'updated',
+          direction: 'desc',
+          per_page: 10
+        }
+      });
+      repos = githubRes.data || [];
+    } catch (error) {
+      console.error("Error fetching GitHub repos:", error.message);
+      return res.status(error.response?.status || 500).json({ 
+        error: error.response?.status === 404 ? "GitHub user not found" :
+               error.response?.status === 403 ? "GitHub API rate limit exceeded" :
+               "Failed to fetch GitHub data"
+      });
+    }
+
+    // Process repos to get project information
+    const processedProjects = await Promise.all(
+      repos.filter(r => !r.fork).slice(0, 5).map(async (repo) => {
+        try {
+          // Get languages
+          const languagesRes = await axios.get(repo.languages_url, {
+            headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader }
+          });
+          const technologies = Object.keys(languagesRes.data).slice(0, 3);
+
+          // Try to get README
+          let description = repo.description || "No description available";
+          try {
+            const readmeRes = await axios.get(
+              `https://api.github.com/repos/${githubUsername}/${repo.name}/contents/README.md`,
+              { headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader } }
+            );
+            if (readmeRes.data) {
+              const content = await axios.get(readmeRes.data.download_url);
+              description = await summarizeReadme(repo.name, content.data);
+            }
+          } catch (err) {
+            console.warn(`No README found for ${repo.name}`);
+          }
+
+          // Calculate score
+          const score = technologies.length * 2 + 
+                       (Date.now() - new Date(repo.pushed_at).getTime() < 180 * 24 * 60 * 60 * 1000 ? 5 : 0) +
+                       (repo.stargazers_count > 0 ? 3 : 0);
+
+          return {
+            name: repo.name,
+            description: description,
+            technologies: technologies,
+            stars: repo.stargazers_count,
+            url: repo.html_url,
+            score: score
+          };
+        } catch (err) {
+          console.error(`Error processing repo ${repo.name}:`, err.message);
+          return null;
+        }
+      })
+    );
+
+    // Filter out failed projects and sort by score
+    const validProjects = processedProjects.filter(p => p !== null);
+    validProjects.sort((a, b) => b.score - a.score);
+    
+    // Take top 2 projects
+    const bestProjects = validProjects.slice(0, 2).map(project => ({
+      name: project.name,
+      description: project.description,
+      technologies: project.technologies,
+      stars: project.stars,
+      url: project.url
+    }));
+
+    // Continue with the rest of your code (skills, education, etc.)
+    let allLanguages = [...new Set(repos.map(r => r.language).filter(Boolean))];
+    
+    // Rest of your existing code for LeetCode, skills, etc.
+    // ...
+
+    // Create the final response object
+    const resumeData = {
+      name: userRes.data.name || githubUsername,
+      contactInfo: contactInfo,
+      summary: "", // Will be filled by AI
+      skills: categorizedSkills,
+      projects: {
+        title: "Projects",
+        items: bestProjects
+      },
+      education: educationString,
+      experience: workExperience,
+      template: template
+    };
+
+    // Get AI-generated content
+    try {
+      const aiText = await safeGenerateContent({
+        model: GROQ_MODELS.DEFAULT,
+        contents: [{ 
+          role: "user", 
+          parts: [{ 
+            text: `Generate a professional summary highlighting skills and achievements. Output ONLY the JSON object.
+                  Input Data:
+                  Skills: ${JSON.stringify(categorizedSkills)}
+                  Projects: ${JSON.stringify(bestProjects)}
+                  Work: ${JSON.stringify(workExperience)}
+                  Education: ${educationString}
+                  
+                  Required Format:
+                  {
+                    "summary": "3-5 sentence professional summary"
+                  }`
+          }]
+        }],
+        generationConfig: { temperature: 0.5, max_tokens: 512 },
+      });
+
+      const aiData = JSON.parse(aiText);
+      resumeData.summary = aiData.summary;
+    } catch (err) {
+      console.error("Error generating AI content:", err);
+      resumeData.summary = "Experienced developer with a track record of successful project delivery.";
+    }
+
+    console.log("Final resume data:", JSON.stringify(resumeData, null, 2));
+    res.json(resumeData);
+
+  } catch (error) {
+    console.error("Process data error:", error);
+    res.status(500).json({ error: "An unexpected error occurred" });
+  }
+});

@@ -121,7 +121,24 @@ async function safeGenerateContent({ model, contents, generationConfig = {} }, r
       };
       const result = await groqClient.post("/chat/completions", payload);
       console.log("Groq API call successful");
-      return result.data.choices[0].message.content;
+      const content = result.data.choices[0].message.content;
+      
+      // If the prompt asks for JSON, try to ensure we get valid JSON
+      if (content.includes("Return JSON:") || payload.messages[0].content.includes("Return JSON:")) {
+        try {
+          // Try to extract JSON from the response if it's not already JSON
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+          // If no JSON found in response, create a fallback JSON
+          return await localGenerateContent({ contents, model });
+        } catch (parseErr) {
+          console.warn("Failed to parse Groq response as JSON:", parseErr.message);
+          return await localGenerateContent({ contents, model });
+        }
+      }
+      return content;
     } catch (err) {
       console.warn(`Groq API call failed (attempt ${i + 1}):`, err.message);
       console.error("Full error:", JSON.stringify(err, null, 2));
@@ -148,7 +165,7 @@ app.get("/api/test-grok", async (req, res) => {
   if (!groqClient) return res.status(400).json({ error: "Groq client not configured. Set GROQ_API_KEY." });
   try {
     const result = await groqClient.post("/chat/completions", {
-      model: "llama3-8b-8192",
+      model: GROQ_MODELS.DEFAULT,
       messages: [{ role: "user", content: "Say hello and report model status" }],
       temperature: 0,
     });
@@ -168,7 +185,7 @@ README: ${readmeText.slice(0, 1000)}... (truncated for brevity)
 `;
   try {
     const summary = await safeGenerateContent({
-      model: "llama3-8b-8192",
+      model: GROQ_MODELS.DEFAULT,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.3, max_tokens: 256 },
     });
@@ -224,7 +241,23 @@ function sanitizeInput(input) {
 app.post("/api/process-data", async (req, res) => {
   try {
     console.log("Received request body:", JSON.stringify(req.body, null, 2));
-    const { githubUsername, leetcodeUser, workExperience = [], education = {}, contactInfo = {}, customSections = {}, template = "ATS-friendly" } = req.body;
+    const { 
+      githubUsername, 
+      leetcodeUser, 
+      workExperience = [], 
+      education = {}, 
+      contactInfo = {}, 
+      customSections = {}, 
+      template = "ATS-friendly",
+      projects = { title: "Projects", items: [] }  // Add default projects section
+    } = req.body;
+    
+    // Initialize projectsSection with default values
+    const projectsSection = {
+      title: projects.title || "Projects",
+      items: Array.isArray(projects.items) ? projects.items : []
+    };
+    
     console.log("Parsed request data:", { githubUsername, leetcodeUser, template });
 
     if (!githubUsername) {
@@ -243,10 +276,22 @@ app.post("/api/process-data", async (req, res) => {
     // Fetch GitHub repos with error handling
     let repos = [];
     try {
-      const githubRes = await axios.get(`https://api.github.com/users/${githubUsername}/repos`, {
+      // First verify the user exists
+      const userRes = await axios.get(`https://api.github.com/users/${githubUsername}`, {
         headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader },
       });
-      if (!githubRes.data) throw new Error("GitHub user not found");
+      if (!userRes.data) throw new Error("GitHub user not found");
+
+      // Then fetch repositories
+      const githubRes = await axios.get(`https://api.github.com/users/${githubUsername}/repos`, {
+        headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader },
+        params: {
+          sort: 'updated',
+          direction: 'desc',
+          per_page: 10 // Limit to most recent 10 repos
+        }
+      });
+      if (!githubRes.data) throw new Error("No repositories found");
       repos = githubRes.data;
     } catch (error) {
       console.error("Error fetching GitHub repos:", error.message);
@@ -265,13 +310,38 @@ app.post("/api/process-data", async (req, res) => {
     let leetcodeLanguages = [];
     if (leetcodeUser) {
       try {
+        // First verify the user exists
+        const userQuery = {
+          query: `query userPublicProfile($username: String!) {
+            matchedUser(username: $username) {
+              username
+            }
+          }`,
+          variables: { username: leetcodeUser },
+        };
+        
+        // Verify that the LeetCode user actually exists before pulling stats
+        try {
+          await axios.post("https://leetcode.com/graphql", userQuery, {
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (e) {
+          // 400 = user does not exist – swallow it and continue
+          if (e.response?.status === 400) {
+            console.warn("LeetCode user not found (verification step):", leetcodeUser);
+            return; // skip the detailed stats request
+          }
+          throw e; // any other error should bubble up
+        }
+
+        // Then fetch detailed stats
         const query = {
-          query: `query getUserProfile($username: String!) { 
-            matchedUser(username: $username) { 
-              username 
-              submitStats { acSubmissionNum { difficulty count } } 
-              languageProblemCount { languageName count } 
-            } 
+          query: `query getUserProfile($username: String!) {
+            matchedUser(username: $username) {
+              username
+              submitStats { acSubmissionNum { difficulty count } }
+              languageProblemCount { languageName count }
+            }
           }`,
           variables: { username: leetcodeUser },
         };
@@ -288,7 +358,12 @@ app.post("/api/process-data", async (req, res) => {
           }
         }
       } catch (err) {
-        console.warn("LeetCode fetch failed:", err.message);
+        if (err.response?.status === 400) {
+          console.warn("LeetCode user not found:", leetcodeUser);
+        } else {
+          console.warn("LeetCode fetch failed:", err.message);
+        }
+        // Don't fail the entire request for LeetCode issues
       }
     }
     allLanguages = [...new Set([...allLanguages, ...leetcodeLanguages])];
@@ -314,19 +389,50 @@ app.post("/api/process-data", async (req, res) => {
         limitedRepos.map(async r => {
           try {
             const languages = await fetchRepoLanguages(githubUsername, r.name);
+            // Convert languages object to array of names, sorted by usage
+            const techStack = Object.entries(languages)
+              .sort(([,a], [,b]) => b - a)  // Sort by byte count
+              .map(([lang]) => lang)        // Get just the language names
+              .slice(0, 3);                 // Take top 3 most used languages
+            
             const langScore = getLanguageScore(languages);
             const recencyScore = Math.max(0, 6 - (Date.now() - new Date(r.pushed_at)) / (1000 * 60 * 60 * 24 * 30));
             const descScore = r.description ? 3 : 0;
             const totalScore = langScore + recencyScore + descScore;
             let readmeSummary = r.description || "No description available";
             try {
-              const readmeRes = await axios.get(
-                `https://api.github.com/repos/${githubUsername}/${r.name}/readme`,
-                { headers: { Accept: "application/vnd.github.v3.raw", ...githubAuthHeader } },
+              // First check if README exists
+              const readmeMetaRes = await axios.get(
+                `https://api.github.com/repos/${githubUsername}/${r.name}/contents/README.md`,
+                { headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader } },
               );
-              readmeSummary = await summarizeReadme(r.name, readmeRes.data);
+              
+              if (readmeMetaRes.data) {
+                // Then fetch the actual README content
+                const readmeRes = await axios.get(readmeMetaRes.data.download_url, {
+                  headers: { ...githubAuthHeader }
+                });
+                readmeSummary = await summarizeReadme(r.name, readmeRes.data);
+              } else {
+                console.warn(`No README.md found for ${r.name}`);
+              }
             } catch (readmeErr) {
-              console.warn(`Error fetching README for ${r.name}:`, readmeErr.message);
+              // Try README.markdown if README.md doesn't exist
+              try {
+                const readmeMetaRes = await axios.get(
+                  `https://api.github.com/repos/${githubUsername}/${r.name}/contents/README.markdown`,
+                  { headers: { Accept: "application/vnd.github.v3+json", ...githubAuthHeader } },
+                );
+                
+                if (readmeMetaRes.data) {
+                  const readmeRes = await axios.get(readmeMetaRes.data.download_url, {
+                    headers: { ...githubAuthHeader }
+                  });
+                  readmeSummary = await summarizeReadme(r.name, readmeRes.data);
+                }
+              } catch (markdownErr) {
+                console.warn(`Error fetching README for ${r.name}:`, readmeErr.message);
+              }
             }
             return { ...r, description: readmeSummary, score: totalScore };
           } catch (err) {
@@ -334,6 +440,7 @@ app.post("/api/process-data", async (req, res) => {
             return { 
               ...r, 
               description: r.description || "No description available",
+              techStack: [],  // Empty tech stack for failed fetches
               score: 0
             };
           }
@@ -348,11 +455,29 @@ app.post("/api/process-data", async (req, res) => {
       }));
     }
 
+    // Sort and select best projects
     allProjects.sort((a, b) => b.score - a.score);
-    let bestProjects = allProjects.slice(0, 2);
+    const bestProjects = allProjects.slice(0, 2).map(project => {
+      // Get key points from description
+      const keyPoints = (project.description || '')
+        .split(/[.!?]/)
+        .filter(s => s.trim().length > 0)
+        .slice(0, 3)
+        .map(s => s.trim())
+        .join('\n• ');
 
+      return {
+        name: project.name,
+        description: keyPoints ? `• ${keyPoints}` : project.description || 'No description available',
+        stars: project.stargazers_count || 0,
+        url: project.html_url,
+        technologies: project.techStack || []
+      };
+    });
+
+    // Allow custom projects to override
     if (customSections.Projects) {
-      bestProjects = customSections.Projects.items || bestProjects;
+      const customProjects = customSections.Projects.items || [];
       delete customSections.Projects;
     }
 
@@ -363,47 +488,86 @@ app.post("/api/process-data", async (req, res) => {
         ? `${education.degree}, ${education.institution || ""} (${education.dates || education.year || "Not provided"})`
         : "Not provided");
 
-    const prompt = `
-Generate a 3-5 sentence resume summary for a developer (entry-level to senior) based on:
-- Skills: ${JSON.stringify(
+    // Add projects to the response data structure
+    const responseData = {
+      summary: "",
+      enhancedExperience: workExperience,
+      skills: categorizedSkills,
+      projects: {
+        title: "Projects",
+        items: bestProjects.map(project => ({
+          name: project.name,
+          description: project.description,
+          stars: project.stargazers_count,
+          url: project.html_url,
+          technologies: project.techStack || []
+        }))
+      },
+      education: educationString,
+      contactInfo: contactInfo,
+      template: template,
+    };
+
+    console.log('Projects data:', JSON.stringify(responseData.projects, null, 2));
+
+    const prompt = `You are a professional resume writer. Generate a resume summary in strict JSON format. Output ONLY the JSON object - no explanations, no markdown.
+
+Input Data:
+Skills: ${JSON.stringify(
       Object.fromEntries(
-        Object.entries(categorizedSkills).map(([k, v]) => [k, v.slice(0, 5)]),
+        Object.entries(categorizedSkills || {}).map(([k, v]) => [k, v.slice(0, 5)]),
       ),
     )}
-- Projects: ${JSON.stringify(
-      bestProjects.map(p => ({
-        name: p.name,
-        description: p.description.slice(0, 200),
-      })),
-    )}
-- Work: ${JSON.stringify(workExperience.slice(0, 2))}
-- Education: ${educationString.slice(0, 100)}
-Return JSON: { "summary": "string", "enhancedExperience": [array of {title, description, achievements}] }
-`;
+Projects: ${JSON.stringify((projectsSection?.items || []).slice(0, 3))}
+Work: ${JSON.stringify((workExperience || []).slice(0, 2))}
+Education: ${(educationString || '').slice(0, 100)}
+
+Required Output Format (exactly this structure):
+{
+  "summary": "3-5 sentence professional summary highlighting skills and achievements",
+  "enhancedExperience": [
+    {
+      "title": "Role or Project",
+      "description": "Key responsibilities and impact",
+      "achievements": ["Achievement 1", "Achievement 2"]
+    }
+  ]
+}
+
+Remember: Respond with ONLY the JSON object, no other text.`;
 
     let aiOutput = { summary: "", enhancedExperience: workExperience };
     if (!customSections.Summary) {
       const aiText = await safeGenerateContent({
-        model: "llama3-8b-8192",
+        model: GROQ_MODELS.DEFAULT,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.5, max_tokens: 512 },
       });
-      if (aiText) {
-        try {
-          aiOutput = JSON.parse(aiText);
-        } catch (parseErr) {
-          console.warn("Groq returned invalid JSON, using fallback:", parseErr.message);
-          aiOutput = {
-            summary: `A dedicated developer with skills in ${Object.values(categorizedSkills)
-              .flat()
-              .slice(0, 5)
-              .join(", ")}. Experienced in building projects like ${bestProjects
-              .map(p => p.name)
-              .join(", ")}. Seeking opportunities to contribute to innovative teams.`,
-            enhancedExperience: workExperience,
-          };
-        }
+
+      // -------------------------------------------------
+      // Robust JSON extraction
+      // -------------------------------------------------
+      let raw = typeof aiText === "string" ? aiText.trim() : "";
+      if (!raw) {
+        console.warn("Groq returned empty response – using fallback summary");
       } else {
+        // Try to pull out a JSON block if the model wrapped it in markdown
+        const jsonMatch = raw.match(/```(?:json)?\s*({[\s\S]*?})\s*```/i) || raw.match(/({[\s\S]*})/);
+        if (jsonMatch) raw = jsonMatch[1];
+
+        try {
+          aiOutput = JSON.parse(raw);
+        } catch (parseErr) {
+          console.warn("Groq JSON parse failed – raw output:", raw);
+          console.warn("Parse error:", parseErr.message);
+          // Let the code fall through to the fallback
+        }
+      }
+
+      // -------------------------------------------------
+      // Fallback when we still have no valid JSON
+      // -------------------------------------------------
+      if (!aiOutput || typeof aiOutput !== "object") {
         console.warn("Groq API failed, using fallback summary.");
         aiOutput = {
           summary: `A dedicated developer with skills in ${Object.values(categorizedSkills)
