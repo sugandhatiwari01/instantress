@@ -32,18 +32,40 @@ const ResumeEditor = () => {
   };
 
   // Handle input changes for basic fields
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    if (name.includes('contactInfo.')) {
-      const field = name.split('.')[1];
-      setFormData({
-        ...formData,
-        contactInfo: { ...formData.contactInfo, [field]: value }
-      });
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+
+  console.log("🟡 Input Change Detected:");
+  console.log("Field name:", name);
+  console.log("Value:", value);
+  console.log("Previous formData:", JSON.stringify(formData, null, 2));
+
+  setFormData(prev => {
+    let newFormData;
+
+    if (name.startsWith('contactInfo.')) {
+      const key = name.split('.')[1];
+      newFormData = {
+        ...prev,
+        contactInfo: {
+          ...prev.contactInfo,
+          [key]: value || ''
+        }
+      };
     } else {
-      setFormData({ ...formData, [name]: value });
+      newFormData = {
+        ...prev,
+        [name]: value || ''
+      };
     }
-  };
+
+    console.log("🟢 Updated formData (before set):", JSON.stringify(newFormData, null, 2));
+    return newFormData;
+  });
+};
+
+
+
 
   // Handle content for text-based sections (Summary, Education, Hobbies)
   const handleContentChange = (e) => {
@@ -95,7 +117,12 @@ const ResumeEditor = () => {
         updatedSections[selectedSection] = { items: projectOrExperience };
       }
     }
-    setFormData({ ...formData, customSections: updatedSections });
+
+    console.log("📦 Adding section:", selectedSection);
+console.log("Old formData:", JSON.stringify(formData, null, 2));
+console.log("Updated sections:", JSON.stringify(updatedSections, null, 2));
+setFormData(prev => ({ ...prev, customSections: updatedSections }));
+
     // Reset inputs
     setSectionContent('');
     setSectionItems([]);
@@ -169,13 +196,14 @@ const ResumeEditor = () => {
         <div>
           <label>Email:</label>
           <input
-            type="email"
-            name="contactInfo.email"
-            value={formData.contactInfo.email}
-            onChange={handleInputChange}
-            placeholder="Email"
-            style={inputStyle}
-          />
+  type="email"
+  name="contactInfo.email"
+  value={formData.contactInfo.email || ''}
+  onChange={handleInputChange}
+  placeholder="Email"
+  style={inputStyle}
+/>
+
         </div>
         <div>
           <label>Mobile:</label>
@@ -191,13 +219,13 @@ const ResumeEditor = () => {
         <div>
           <label>LinkedIn:</label>
           <input
-            type="url"
-            name="contactInfo.linkedin"
-            value={formData.contactInfo.linkedin}
-            onChange={handleInputChange}
-            placeholder="LinkedIn URL"
-            style={inputStyle}
-          />
+  type="url"
+  name="contactInfo.linkedin"
+  value={formData.contactInfo.linkedin || ''}
+  onChange={handleInputChange}
+  placeholder="LinkedIn URL"
+  style={inputStyle}
+/>
         </div>
         <div>
           <label>Select Section to Edit:</label>
