@@ -10,6 +10,71 @@ import { useAuth } from '../context/AuthContext';
 /*                         STYLE DEFINITIONS                        */
 /* --------------------------------------------------------------- */
 const styles = {
+
+portfolioContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 20,
+    padding: 20,
+  },
+  portfolioHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  portfolioTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  portfolioActions: {
+    display: 'flex',
+    gap: 10,
+  },
+  actionButton: {
+    padding: '6px 12px',
+    borderRadius: 6,
+    fontSize: '0.9rem',
+    cursor: 'pointer',
+    backgroundColor: '#007bff',
+    color: '#fff',
+    border: 'none',
+  },
+  previewWrapper: {
+    display: 'flex',
+    flexDirection: 'column', // stack vertically
+    gap: 20,
+  },
+  codePreview: {
+    backgroundColor: '#1e1e1e',
+    color: '#f8f8f2',
+    borderRadius: 8,
+    padding: 16,
+    overflowX: 'auto',
+    maxHeight: '60vh',
+  },
+  livePreview: {
+    backgroundColor: '#fff',
+    border: '1px solid #ddd',
+    borderRadius: 8,
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    marginBottom: 10,
+    color: '#333',
+  },
+  code: {
+    fontFamily: 'monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+  },
+  iframe: {
+    width: '100%',
+    height: '70vh',
+    border: 'none',
+    borderRadius: 8,
+  },
   container: { minHeight: '100vh', background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', padding: '32px 16px' },
   content: { maxWidth: '1200px', margin: '0 auto' },
 
@@ -461,51 +526,74 @@ const saveEdit = (section, index, field) => {
   );
 
   /* ---------- Portfolio Tab ---------- */
-  const renderPortfolioTab = () => (
-    <div style={styles.portfolioContainer}>
-      <div style={styles.portfolioHeader}>
-        <h2 style={styles.portfolioTitle}>Portfolio Preview</h2>
-        <div style={styles.portfolioActions}>
-          <button style={styles.actionButton} onClick={() => setActiveTab('resume')}>
-            Back to Resume
-          </button>
-          <button
-            style={styles.actionButton}
-            onClick={() => {
-              const textarea = document.createElement('textarea');
-              textarea.value = portfolioCode;
-              document.body.appendChild(textarea);
-              textarea.select();
-              document.execCommand('copy');
-              document.body.removeChild(textarea);
-              alert('Code copied to clipboard!');
-            }}
-          >
-            Copy Code
-          </button>
-          <button
-            style={styles.actionButton}
-            onClick={() => {
-              const blob = new Blob([portfolioCode], { type: 'text/html' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'portfolio.html';
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            Download HTML
-          </button>
-        </div>
+const renderPortfolioTab = () => (
+  <div style={styles.portfolioContainer}>
+    {/* Header Section */}
+    <div style={styles.portfolioHeader}>
+      <h2 style={styles.portfolioTitle}>Portfolio Preview</h2>
+      <div style={styles.portfolioActions}>
+        <button style={styles.actionButton} onClick={() => setActiveTab('resume')}>
+          Back to Resume
+        </button>
+
+        <button
+          style={styles.actionButton}
+          onClick={() => {
+            navigator.clipboard
+              .writeText(portfolioCode)
+              .then(() => alert('Code copied to clipboard!'))
+              .catch(() => alert('Failed to copy code.'));
+          }}
+        >
+          Copy Code
+        </button>
+
+        <button
+          style={styles.actionButton}
+          onClick={() => {
+            const blob = new Blob([portfolioCode], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'portfolio.html';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Download HTML
+        </button>
       </div>
+    </div>
+
+    {/* Code and Live Preview stacked vertically */}
+    <div style={styles.previewWrapper}>
+      {/* Code Section */}
       <div style={styles.codePreview}>
+        <h3 style={styles.sectionTitle}>Code</h3>
         <pre style={styles.code}>
           {portfolioCode || 'Click "Generate Portfolio" on the Resume tab to create the code.'}
         </pre>
       </div>
+
+      {/* Live Visual Preview */}
+      <div style={styles.livePreview}>
+        <h3 style={styles.sectionTitle}>Live Preview</h3>
+        {portfolioCode ? (
+          <iframe
+            title="Portfolio Preview"
+            style={styles.iframe}
+            srcDoc={portfolioCode}
+            sandbox="allow-scripts allow-same-origin"
+          />
+        ) : (
+          <p style={{ color: '#888' }}>No portfolio generated yet.</p>
+        )}
+      </div>
     </div>
-  );
+  </div>
+);
+
+
 
   /* ---------- Resume Tab – WITH LINKEDIN PHOTO & HEADLINE ---------- */
   const renderResumeTab = () => (
