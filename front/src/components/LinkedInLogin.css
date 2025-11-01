@@ -1,0 +1,22 @@
+.linkedin-login {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.linkedin-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.linkedin-button:hover {
+  opacity: 0.9;
+}
+
+.linkedin-button:active {
+  opacity: 0.8;
+}

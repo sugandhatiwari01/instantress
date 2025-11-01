@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import LinkedInLogin from './LinkedInLogin';
 import './InputPage.css';
 
 const InputPage = ({ setData, setAiOverview, setError, setIsLoading, setSelectedTemplate }) => {
@@ -18,6 +19,36 @@ const InputPage = ({ setData, setAiOverview, setError, setIsLoading, setSelected
   });
   const [localError, setLocalError] = useState('');
   const [localIsLoading, setLocalIsLoading] = useState(false);
+  const [linkedInProfile, setLinkedInProfile] = useState(null);
+
+  useEffect(() => {
+    // Check if user is authenticated with LinkedIn
+    const fetchLinkedInProfile = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/linkedin/profile', {
+          withCredentials: true
+        });
+        setLinkedInProfile(response.data);
+        
+        // Update form data with LinkedIn profile info
+        if (response.data) {
+          setFormData(prev => ({
+            ...prev,
+            contactInfo: {
+              ...prev.contactInfo,
+              linkedin: `https://www.linkedin.com/in/${response.data.vanityName}`,
+              email: response.data.emailAddress,
+            }
+          }));
+        }
+      } catch (error) {
+        console.log('Not authenticated with LinkedIn');
+      }
+    };
+
+    fetchLinkedInProfile();
+  }, []);
+
 
   // Handle input changes
   const handleInputChange = (e) => {
