@@ -214,9 +214,15 @@ useEffect(() => {
 
   /* ---------- Helpers (unchanged) ---------- */
   const toggleSection = sec => setExpandedSections(prev => ({ ...prev, [sec]: !prev[sec] }));
-  const startEditing = (section, index, field) => {
-    const key = index !== undefined ? `${section}_${index}_${field}` : section;
-    setIsEditing(prev => ({ ...prev, [key]: true }));
+const startEditing = (section, index, field) => {
+  const key =
+    index !== undefined
+      ? `${section}_${index}_${field}`
+      : field
+      ? `${section}_${field}`
+      : section;
+
+  setIsEditing(prev => ({ ...prev, [key]: true }));
 
     let value = '';
     if (index !== undefined) {
@@ -224,8 +230,7 @@ useEffect(() => {
     } else if (section === 'Skills' || section === 'Certifications') {
       value = (resumeData[section.toLowerCase()]?.items || []).join(', ');
     } else if (section === 'ContactInfo') {
-      const fieldName = field.split('.').pop();
-      value = resumeData.contactInfo?.[fieldName] || '';
+  value = resumeData.contactInfo?.[field] || '';
     } else if (section === 'Education') {
       value = formatEducation(resumeData.education);
     } else if (section === 'Hobbies') {
@@ -238,10 +243,16 @@ useEffect(() => {
     setEditValues(prev => ({ ...prev, [key]: value }));
   };
 
-  const saveEdit = (section, index, field) => {
-    const key = index !== undefined ? `${section}_${index}_${field}` : section;
-    const value = editValues[key] || '';
-    const updated = { ...resumeData };
+const saveEdit = (section, index, field) => {
+  const key =
+    index !== undefined
+      ? `${section}_${index}_${field}`
+      : field
+      ? `${section}_${field}`
+      : section;
+
+  const value = editValues[key] || '';
+  const updated = { ...resumeData };
 
     if (index !== undefined) {
       const items = [...(updated[section.toLowerCase()]?.items || [])];
@@ -256,9 +267,9 @@ useEffect(() => {
       const items = value.split(',').map(s => s.trim()).filter(Boolean);
       updated[section.toLowerCase()] = { items };
     } else if (section === 'ContactInfo') {
-      const fieldName = field.split('.').pop();
-      updated.contactInfo = { ...updated.contactInfo, [fieldName]: value };
-    } else if (section === 'Education') {
+  updated.contactInfo = { ...updated.contactInfo, [field]: value };
+}
+else if (section === 'Education') {
       updated.education = value;
     } else if (section === 'Hobbies') {
       updated.hobbies = { content: value };
@@ -568,16 +579,24 @@ useEffect(() => {
                     value={editValues[`ContactInfo_${field}`] || ''}
                     onChange={e => handleEditChange(`ContactInfo_${field}`, e.target.value)}
                   />
-                  <button style={styles.saveButton} onClick={() => saveEdit('ContactInfo', undefined, `contactInfo.${field}`)}>
-                    Save
-                  </button>
+                  <button
+  style={styles.saveButton}
+  onClick={() => saveEdit('ContactInfo', undefined, field)}
+>
+  Save
+</button>
+
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: 8, flex: 1, alignItems: 'center' }}>
                   <span style={styles.contactValue}>{resumeData.contactInfo?.[field] || 'N/A'}</span>
-                  <button style={styles.editButtonSmall} onClick={() => startEditing('ContactInfo', undefined, `contactInfo.${field}`)}>
-                    Edit
-                  </button>
+                  <button
+  style={styles.editButtonSmall}
+  onClick={() => startEditing('ContactInfo', undefined, field)}
+>
+  Edit
+</button>
+
                 </div>
               )}
             </div>
