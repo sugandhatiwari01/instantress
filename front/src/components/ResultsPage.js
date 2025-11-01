@@ -244,44 +244,67 @@ const startEditing = (section, index, field) => {
   };
 
 const saveEdit = (section, index, field) => {
-  const key =
-    index !== undefined
-      ? `${section}_${index}_${field}`
-      : field
-      ? `${section}_${field}`
-      : section;
+  if (section === 'githubUsername') {
+    setResumeData((prev) => ({
+      ...prev,
+      githubUsername: editValues.githubUsername || prev.githubUsername,
+    }));
+    setIsEditing((prev) => ({ ...prev, githubUsername: false }));
+    return;
+  }
 
-  const value = editValues[key] || '';
-  const updated = { ...resumeData };
+  // For contact info fields
+  if (section === 'ContactInfo' && field) {
+    setResumeData((prev) => ({
+      ...prev,
+      contactInfo: {
+        ...prev.contactInfo,
+        [field]: editValues[`ContactInfo_${field}`] || '',
+      },
+    }));
+    setIsEditing((prev) => ({
+      ...prev,
+      [`ContactInfo_${field}`]: false,
+    }));
+    return;
+  }
 
-    if (index !== undefined) {
-      const items = [...(updated[section.toLowerCase()]?.items || [])];
-      if (section === 'Projects') {
-        items[index] = { ...items[index], [field]: value, html_url: items[index].html_url };
-        updated.projects = { ...updated.projects, items };
-      } else {
-        items[index] = { ...items[index], [field]: field === 'stargazers_count' ? parseInt(value) || 0 : value };
-        updated[section.toLowerCase()] = { items };
-      }
-    } else if (section === 'Skills' || section === 'Certifications') {
-      const items = value.split(',').map(s => s.trim()).filter(Boolean);
-      updated[section.toLowerCase()] = { items };
-    } else if (section === 'ContactInfo') {
-  updated.contactInfo = { ...updated.contactInfo, [field]: value };
-}
-else if (section === 'Education') {
-      updated.education = value;
-    } else if (section === 'Hobbies') {
-      updated.hobbies = { content: value };
-    } else if (section === 'Summary') {
-      updated.summary = value;
-    } else {
-      updated.customSections = { ...updated.customSections, [section]: { content: value } };
-    }
+  // For other sections like Projects, Summary, etc.
+  if (section === 'Summary') {
+    setResumeData((prev) => ({
+      ...prev,
+      summary: editValues.Summary || prev.summary,
+    }));
+    setIsEditing((prev) => ({ ...prev, Summary: false }));
+    return;
+  }
 
-    setResumeData(updated);
-    setIsEditing(prev => ({ ...prev, [key]: false }));
-  };
+  if (section === 'Skills') {
+    setResumeData((prev) => ({
+      ...prev,
+      skills: editValues.Skills || prev.skills,
+    }));
+    setIsEditing((prev) => ({ ...prev, Skills: false }));
+    return;
+  }
+
+  if (section === 'Projects' && index !== undefined && field) {
+    setResumeData((prev) => {
+      const newProjects = [...(prev.projects?.items || [])];
+      newProjects[index] = {
+        ...newProjects[index],
+        [field]: editValues[`Projects_${index}_${field}`],
+      };
+      return { ...prev, projects: { ...prev.projects, items: newProjects } };
+    });
+    setIsEditing((prev) => ({
+      ...prev,
+      [`Projects_${index}_${field}`]: false,
+    }));
+    return;
+  }
+};
+
 
   const addItem = section => {
     const key = section === 'Projects' ? 'projects' : 'experience';
@@ -304,7 +327,10 @@ else if (section === 'Education') {
     });
   };
 
-  const handleEditChange = (key, value) => setEditValues(prev => ({ ...prev, [key]: value }));
+  const handleEditChange = (field, value) => {
+  setEditValues((prev) => ({ ...prev, [field]: value }));
+};
+
 
   /* ---------- Format Helpers ---------- */
   const formatEducation = edu => {
@@ -605,28 +631,55 @@ else if (section === 'Education') {
       </div>
 
       {/* Summary */}
-      <Section title="Summary" icon="Summary" expanded={expandedSections.summary} onToggle={() => toggleSection('summary')}>
-        {isEditing.Summary ? (
-          <div style={styles.editContainer}>
-            <textarea
-              style={styles.textarea}
-              rows={4}
-              value={editValues.Summary || ''}
-              onChange={(e) => handleEditChange('Summary', e.target.value)}
-            />
-            <button style={styles.saveButtonLarge} onClick={() => saveEdit('Summary')}>
-              Save
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <p style={{ margin: 0, flex: 1 }}>{resumeData.summary || aiOverview || 'No summary'}</p>
-            <button style={styles.editButtonSmall} onClick={() => startEditing('Summary')}>
-              Edit
-            </button>
-          </div>
-        )}
-      </Section>
+    {/* Summary */}
+<Section
+  title="Summary"
+  icon="Summary"
+  expanded={expandedSections.summary}
+  onToggle={() => toggleSection('summary')}
+>
+  {isEditing.Summary ? (
+    <div style={styles.editContainer}>
+      <textarea
+        style={styles.textarea}
+        rows={4}
+        value={editValues.Summary || ''}
+        onChange={(e) => handleEditChange('Summary', e.target.value)}
+      />
+      <button
+  style={{
+    ...styles.editButtonSmall,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    width: 'auto',
+    padding: '4px 10px',
+    fontSize: 14,
+  }}
+  onClick={() => startEditing('Summary')}
+>
+  Edit
+</button>
+
+    </div>
+  ) : (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ margin: 0, textAlign: 'justify', lineHeight: '1.6' }}>
+        {resumeData.summary || aiOverview || 'No summary'}
+      </p>
+      <button
+        style={{
+          ...styles.editButtonSmall,
+          alignSelf: 'flex-start',
+          marginTop: 8,
+        }}
+        onClick={() => startEditing('Summary')}
+      >
+        Edit
+      </button>
+    </div>
+  )}
+</Section>
+
 
       {/* Skills */}
       <Section title="Skills" icon="Skills" expanded={expandedSections.skills} onToggle={() => toggleSection('skills')}>
@@ -680,81 +733,142 @@ else if (section === 'Education') {
       </Section>
 
       {/* Projects */}
-      <Section title="Projects" icon="Projects" expanded={expandedSections.projects} onToggle={() => toggleSection('projects')}>
-        <button style={styles.addButton} onClick={() => addItem('Projects')}>Add Project</button>
-        {resumeData.projects?.items?.length ? (
-          resumeData.projects.items.map((project, i) => (
-            <div key={i} style={styles.projectCard}>
-              {/* Name */}
-              <div style={styles.projectHeader}>
-                <div style={{ flex: 1 }}>
-                  {isEditing[`Projects_${i}_name`] ? (
-                    <div style={styles.editContainer}>
-                      <input
-                        style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #9333ea' }}
-                        value={editValues[`Projects_${i}_name`] || project.name}
-                        onChange={(e) => handleEditChange(`Projects_${i}_name`, e.target.value)}
-                      />
-                      <button style={styles.saveButton} onClick={() => saveEdit('Projects', i, 'name')}>
-                        Save
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <a href={project.html_url} target="_blank" rel="noopener noreferrer" style={styles.projectName}>
-                        {project.name}
-                      </a>
-                      <button style={styles.editButtonSmall} onClick={() => startEditing('Projects', i, 'name')}>
-                        Edit
-                      </button>
-                    </div>
-                  )}
-                </div>
+     <Section
+  title="Projects"
+  icon="Projects"
+  expanded={expandedSections.projects}
+  onToggle={() => toggleSection('projects')}
+>
+  <button style={styles.addButton} onClick={() => addItem('Projects')}>
+    Add Project
+  </button>
+
+  {resumeData.projects?.items?.length ? (
+    resumeData.projects.items.map((project, i) => (
+      <div key={i} style={styles.projectCard}>
+        {/* ---------------- Name ---------------- */}
+        <div style={styles.projectHeader}>
+          <div style={{ flex: 1 }}>
+            {isEditing[`Projects_${i}_name`] ? (
+              <div style={styles.editContainer}>
+                <input
+                  style={{
+                    width: '100%',
+                    padding: 8,
+                    borderRadius: 4,
+                    border: '1px solid #9333ea',
+                  }}
+                  value={editValues[`Projects_${i}_name`] || project.name}
+                  onChange={(e) =>
+                    handleEditChange(`Projects_${i}_name`, e.target.value)
+                  }
+                />
+                <button
+                  style={styles.saveButton}
+                  onClick={() => saveEdit('Projects', i, 'name')}
+                >
+                  Save
+                </button>
               </div>
-
-              {/* Description */}
-              {isEditing[`Projects_${i}_description`] ? (
-                <div style={styles.editContainer}>
-                  <textarea
-                    style={styles.textarea}
-                    rows={3}
-                    value={editValues[`Projects_${i}_description`] || project.description}
-                    onChange={(e) => handleEditChange(`Projects_${i}_description`, e.target.value)}
-                  />
-                  <button style={styles.saveButton} onClick={() => saveEdit('Projects', i, 'description')}>
-                    Save
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 8 }}>
-                  <p style={{ margin: 0, flex: 1 }}>{project.description || 'No description'}</p>
-                  <button style={styles.editButtonSmall} onClick={() => startEditing('Projects', i, 'description')}>
-                    Edit
-                  </button>
-                </div>
-              )}
-
-              {/* Meta */}
-              <div style={styles.projectMeta}>
-                <span>Stars: {project.stars || 0}</span>
-                {project.technologies?.length > 0 && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {project.technologies.map((tech, idx) => (
-                      <span key={idx} style={styles.tech}>{tech}</span>
-                    ))}
-                  </div>
-                )}
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <a
+                  href={project.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.projectName}
+                >
+                  {project.name}
+                </a>
+                <button
+                  style={styles.editButtonSmall}
+                  onClick={() => startEditing('Projects', i, 'name')}
+                >
+                  Edit
+                </button>
               </div>
+            )}
+          </div>
+        </div>
 
-              <button style={styles.removeButton} onClick={() => removeItem('Projects', i)}>
-                Remove
-              </button>
-            </div>
-          ))
+        {/* ---------------- Description ---------------- */}
+        {isEditing[`Projects_${i}_description`] ? (
+          <div style={styles.editContainer}>
+            <textarea
+              style={styles.textarea}
+              rows={3}
+              value={
+                editValues[`Projects_${i}_description`] || project.description
+              }
+              onChange={(e) =>
+                handleEditChange(`Projects_${i}_description`, e.target.value)
+              }
+            />
+            <button
+              style={styles.saveButton}
+              onClick={() => saveEdit('Projects', i, 'description')}
+            >
+              Save
+            </button>
+          </div>
         ) : (
-          <p style={{ fontStyle: 'italic', color: '#6b7280' }}>No projects</p>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              marginTop: 8,
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                textAlign: 'justify',
+                lineHeight: '1.6',
+              }}
+            >
+              {project.description || 'No description'}
+            </p>
+            <button
+              style={{
+                ...styles.editButtonSmall,
+                alignSelf: 'flex-start',
+                marginTop: 5,
+              }}
+              onClick={() => startEditing('Projects', i, 'description')}
+            >
+              Edit
+            </button>
+          </div>
         )}
-      </Section>
+
+        {/* ---------------- Meta ---------------- */}
+        <div style={styles.projectMeta}>
+          <span>⭐ Stars: {project.stars || 0}</span>
+          {project.technologies?.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {project.technologies.map((tech, idx) => (
+                <span key={idx} style={styles.tech}>
+                  {tech}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          style={styles.removeButton}
+          onClick={() => removeItem('Projects', i)}
+        >
+          Remove
+        </button>
+      </div>
+    ))
+  ) : (
+    <p style={{ fontStyle: 'italic', color: '#6b7280' }}>No projects</p>
+  )}
+</Section>
+
 
       {/* Add more sections like Experience, Education, etc. using same pattern */}
     </>
