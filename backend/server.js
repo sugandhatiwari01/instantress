@@ -3,13 +3,367 @@ const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const puppeteer = require("puppeteer");
+const session = require("express-session");
+const { passport, setupLinkedInStrategy } = require("./linkedinAuth");
+const LinkedInAPI = require("./linkedinAPI");
 const { Document, Packer, Paragraph, HeadingLevel } = require("docx");
 const JSZip = require("jszip");
 
 const app = express();
-app.use(cors());  // Allow all origins in development
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true
+}));
 app.use(bodyParser.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Initialize LinkedIn strategy
+setupLinkedInStrategy();
+
+// LinkedIn OAuth routes
+app.get('/auth/linkedin', passport.authenticate('linkedin'));
+
+app.get('/auth/linkedin/callback', 
+  passport.authenticate('linkedin', { 
+    failureRedirect: 'http://localhost:3000/input',
+    successRedirect: 'http://localhost:3000/input'
+  })
+);
+
+// LinkedIn API routes
+app.get('/api/linkedin/profile', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const linkedInApi = new LinkedInAPI(req.user.accessToken);
+    const [profile, email] = await Promise.all([
+      linkedInApi.getProfile(),
+      linkedInApi.getEmailAddress()
+    ]);
+
+    res.json({
+      ...profile,
+      email
+    });
+  } catch (error) {
+    console.error('LinkedIn API Error:', error);
+    res.status(500).json({ error: 'Failed to fetch LinkedIn profile' });
+  }
+});
+
+// LinkedIn OAuth routes
+app.get('/auth/linkedin', passport.authenticate('linkedin'));
+
+app.get('/auth/linkedin/callback', 
+  passport.authenticate('linkedin', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.redirect('http://localhost:3000/input');
+  }
+);
+
+app.get('/api/linkedin/profile', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const response = await axios.get('https://api.linkedin.com/v2/me', {
+      headers: {
+        'Authorization': `Bearer ${req.user.accessToken}`,
+        'cache-control': 'no-cache',
+        'X-Restli-Protocol-Version': '2.0.0'
+      }
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('LinkedIn API Error:', error);
+    res.status(500).json({ error: 'Failed to fetch LinkedIn profile' });
+  }
+});
+// /auth/linkedin/callback
+app.get(
+  '/auth/linkedin/callback',
+  passport.authenticate('linkedin', { failureRedirect: 'http://localhost:3000/input' }),
+  (req, res) => {
+    // req.user now has email, phone, headline, etc.
+    console.log('Logged in user:', req.user.firstName, 'Email:', req.user.email, 'Phone:', req.user.phone);
+    res.redirect('http://localhost:3000/results');
+  }
+);
+// In server.js – add this after LinkedIn routes
+app.get('/api/linkedin/experience', async (req, res) => {
+  if (!req.user?.profileUrl) return res.status(401).json({ error: 'No LinkedIn profile' });
+
+  try {
+    const response = await axios.get(
+      `https://nubela.co/proxycurl/api/linkedin/v2/person?linkedin_profile_url=${encodeURIComponent(req.user.profileUrl)}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.PROXYCURL_API_KEY}` },  // Get from Proxycurl dashboard
+        params: { use_post: true }  // For detailed experience
+      }
+    );
+
+    const experience = response.data.experience?.map(exp => ({
+      title: exp.title || '',
+      company: exp.company_name || '',
+      companyUrl: exp.company_linkedin_url || '',
+      startDate: exp.start.year || '',
+      endDate: exp.end.year || 'Present',
+      description: exp.description || '',
+    })) || [];
+
+    res.json({ experience });
+  } catch (err) {
+    console.error('Proxycurl error:', err.response?.data || err);
+    res.status(500).json({ error: 'Failed to fetch experience' });
+  }
+});
+// Portfolio HTML Generation Function
+function generatePortfolioHTML(resumeData) {
+  const {
+    name,
+    githubUsername,
+    summary,
+    skills,
+    projects,
+    experience,
+    education,
+    contactInfo
+  } = resumeData;
+
+  // Helper function to create project cards HTML
+  const generateProjectCards = (projects) => {
+    if (!projects?.items) return '';
+    
+    return projects.items.map(project => `
+      <div class="project-card">
+        <h3><a href="${project.html_url}" target="_blank">${project.name}</a></h3>
+        <p>${project.description || 'No description available'}</p>
+        ${project.technologies ? `
+        <div class="technologies">
+          ${project.technologies.map(tech => `<span class="tech-tag">${tech}</span>`).join('')}
+        </div>
+        ` : ''}
+        ${project.stars ? `<div class="stars">⭐ ${project.stars}</div>` : ''}
+      </div>
+    `).join('');
+  };
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${name || githubUsername}'s Portfolio</title>
+    <style>
+        :root {
+            --primary-color: #4a148c;
+            --secondary-color: #7b1fa2;
+            --text-color: #333;
+            --background-color: #f5f5f5;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: var(--background-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin: 0;
+        }
+
+        .contact-info {
+            margin-top: 1rem;
+        }
+
+        section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .skill-category {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .project-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: transform 0.2s;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .tech-tag {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin: 0.2rem;
+            font-size: 0.9rem;
+        }
+
+        .experience-item {
+            margin-bottom: 2rem;
+        }
+
+        .timeline {
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>${name || githubUsername}</h1>
+        <div class="contact-info">
+            ${contactInfo?.email ? `<p>📧 ${contactInfo.email}</p>` : ''}
+            ${contactInfo?.mobile ? `<p>📱 ${contactInfo.mobile}</p>` : ''}
+            ${contactInfo?.linkedin ? `<p>💼 <a href="${contactInfo.linkedin}" target="_blank">LinkedIn</a></p>` : ''}
+        </div>
+    </header>
+
+    <div class="container">
+        ${summary ? `
+        <section id="about">
+            <h2>About Me</h2>
+            <p>${summary}</p>
+        </section>
+        ` : ''}
+
+        ${skills ? `
+        <section id="skills">
+            <h2>Skills</h2>
+            <div class="skills-grid">
+                ${Object.entries(skills).map(([category, skillsList]) => `
+                    <div class="skill-category">
+                        <h3>${category}</h3>
+                        <p>${Array.isArray(skillsList) ? skillsList.join(', ') : skillsList}</p>
+                    </div>
+                `).join('')}
+            </div>
+        </section>
+        ` : ''}
+
+        ${projects?.items?.length ? `
+        <section id="projects">
+            <h2>Featured Projects</h2>
+            <div class="projects-grid">
+                ${generateProjectCards(projects)}
+            </div>
+        </section>
+        ` : ''}
+
+        ${experience?.items?.length ? `
+        <section id="experience">
+            <h2>Professional Experience</h2>
+            ${experience.items.map(exp => `
+                <div class="experience-item">
+                    <h3>${exp.title}</h3>
+                    <p class="timeline">${exp.company} | ${exp.dates || 'Present'}</p>
+                    <p>${exp.description || ''}</p>
+                </div>
+            `).join('')}
+        </section>
+        ` : ''}
+
+        ${education ? `
+        <section id="education">
+            <h2>Education</h2>
+            <div class="education-item">
+                ${typeof education === 'string' ? education : `
+                    <h3>${education.degree}</h3>
+                    <p>${education.institution}</p>
+                    ${education.dates ? `<p>${education.dates}</p>` : ''}
+                    ${education.gpa ? `<p>GPA: ${education.gpa}</p>` : ''}
+                `}
+            </div>
+        </section>
+        ` : ''}
+    </div>
+</body>
+</html>`;
+}
+
+// Portfolio Generation Endpoint
+app.post("/api/generate-portfolio", async (req, res) => {
+  try {
+    const { resumeData } = req.body;
+    
+    // Generate portfolio HTML code
+    const portfolioCode = generatePortfolioHTML(resumeData);
+    
+    res.json({ portfolioCode });
+  } catch (error) {
+    console.error("Portfolio generation error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Check optional GitHub token and define githubAuthHeader
 const githubAuthHeader = process.env.GITHUB_TOKEN
@@ -1044,7 +1398,7 @@ function getPortfolioHTML(data, template) {
     `,
   };
 
-  const { githubUsername, categorizedSkills, bestProjects, summary, workExperience, education = {}, contactInfo, customSections } = data;
+  const { githubUsername, categorizedSkills, bestProjects, summary, workExperience,linkedinExperience, education = {}, contactInfo, customSections } = data;
   const educationString = education.degree
     ? `${education.degree}, ${education.institution || ""} (${education.dates || education.year || ""})${education.gpa ? `; GPA: ${education.gpa}` : ""}`
     : customSections.Education?.content || '<span class="placeholder">Edit here: Add education</span>';
@@ -1109,22 +1463,29 @@ function getPortfolioHTML(data, template) {
                   .join("")
               : '<p class="placeholder">Edit here: Add projects</p>'}
           </section>
-          <section class="section" id="experience">
-            <h2>WORK EXPERIENCE</h2>
-            ${workExperience.length
-              ? workExperience
-                  .map(
-                    exp => `
-              <div class="item">
-                <h3>${exp.title || "Title"} | ${exp.company || "Company"}</h3>
-                <p>${exp.description || "Description"}</p>
-                <p><em>${exp.dates || "Dates"}</em></p>
-              </div>
-            `,
-                  )
-                  .join("")
-              : '<p class="placeholder">Edit here: Add experience</p>'}
-          </section>
+<section class="section" id="experience">
+  <h2>WORK EXPERIENCE</h2>
+
+  <!-- 1. LinkedIn data (if it exists) -->
+  ${linkedinExperience?.length
+    ? linkedinExperience
+        .map(exp => `
+          <div class="item">
+            <h3>${sanitize(exp.title)} | ${sanitize(exp.company)}</h3>
+            ${exp.description ? `<p>${sanitize(exp.description)}</p>` : ''}
+            <p><em>${exp.startDate || ''}${exp.endDate ? ` – ${exp.endDate}` : ''}</em></p>
+          </div>
+        `)
+        .join('')
+    : ''}
+
+
+
+  <!-- 2. Nothing at all → placeholder -->
+  ${(!linkedinExperience?.length && (!workExperience?.length)) 
+    ? '<p class="placeholder">Edit here: Add experience</p>'
+    : ''}
+</section>
           <section class="section" id="education">
             <h2>EDUCATION</h2>
             <div class="item">
