@@ -447,7 +447,7 @@ const saveEdit = (section, index, field) => {
             github: resumeData.githubData || data?.githubData,
             leetcode: resumeData.leetcodeData || data?.leetcodeData,
             linkedin: resumeData.linkedinInfo || data?.linkedinInfo,
-            projects: resumeData.projects?.items || [],
+            projects: { items: resumeData.projects?.items || resumeData.projects || [] },
             summary: resumeData.summary,
             skills: resumeData.categorizedSkills,
             experience: resumeData.experience?.items || [],
