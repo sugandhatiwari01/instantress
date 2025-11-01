@@ -144,22 +144,24 @@ function generatePortfolioHTML(resumeData) {
   } = resumeData;
 
   // Helper function to create project cards HTML
-  const generateProjectCards = (projects) => {
-    if (!projects?.items) return '';
-    
-    return projects.items.map(project => `
-      <div class="project-card">
-        <h3><a href="${project.html_url}" target="_blank">${project.name}</a></h3>
-        <p>${project.description || 'No description available'}</p>
-        ${project.technologies ? `
-        <div class="technologies">
-          ${project.technologies.map(tech => `<span class="tech-tag">${tech}</span>`).join('')}
-        </div>
-        ` : ''}
-        ${project.stars ? `<div class="stars">⭐ ${project.stars}</div>` : ''}
+ const generateProjectCards = (projects) => {
+  if (!projects) return '';
+  const projectList = projects.items || projects; // handle both shapes
+
+  return projectList.map(project => `
+    <div class="project-card">
+      <h3><a href="${project.html_url || project.link || '#'}" target="_blank">${project.name}</a></h3>
+      <p>${project.description || 'No description available'}</p>
+      ${project.technologies ? `
+      <div class="technologies">
+        ${project.technologies.map(tech => `<span class="tech-tag">${tech}</span>`).join('')}
       </div>
-    `).join('');
-  };
+      ` : ''}
+      ${project.stars ? `<div class="stars">⭐ ${project.stars}</div>` : ''}
+    </div>
+  `).join('');
+};
+
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -354,16 +356,16 @@ function generatePortfolioHTML(resumeData) {
 app.post("/api/generate-portfolio", async (req, res) => {
   try {
     const { resumeData } = req.body;
+    console.log("Received resumeData for portfolio generation:", JSON.stringify(resumeData, null, 2));
     
-    // Generate portfolio HTML code
     const portfolioCode = generatePortfolioHTML(resumeData);
-    
     res.json({ portfolioCode });
   } catch (error) {
     console.error("Portfolio generation error:", error);
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Check optional GitHub token and define githubAuthHeader
 const githubAuthHeader = process.env.GITHUB_TOKEN
