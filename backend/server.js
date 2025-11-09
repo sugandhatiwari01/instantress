@@ -4,132 +4,482 @@ const axios = require("axios");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-const { passport, setupLinkedInStrategy } = require("./linkedinAuth");
-const LinkedInAPI = require("./linkedinAPI");
+const passport = require("passport");
+const cookieParser = require('cookie-parser');
+const LinkedInStrategy = require("passport-linkedin-oauth2").Strategy;
+const MemoryStore = require('express-session').MemoryStore;
+const app = express();
+
 const { Document, Packer, Paragraph, HeadingLevel } = require("docx");
 const JSZip = require("jszip");
 
-const app = express();
+
+
+// === MIDDLEWARE ===
+app.use(cookieParser());
+
 app.use(cors({
   origin: "http://localhost:3000",
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(bodyParser.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
+app.use(express.json({ limit: '10mb' }));
+const sessionStore = new MemoryStore({
+  checkPeriod: 86400000
+});
+const store = new MemoryStore({ checkPeriod: 86400000 });
+app.use(
+  session({
+    store,
+    secret: process.env.SESSION_SECRET || 'linkedin-fix-2025',
+    resave: false,
+    saveUninitialized: false,
+    name: 'linkedin_resume_sid',
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: false,          // localhost
+      sameSite: 'lax',
+    },
+  })
+);
+// Clear junk cookies
+
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Initialize LinkedIn strategy
-setupLinkedInStrategy();
 
-// LinkedIn OAuth routes
-app.get('/auth/linkedin', passport.authenticate('linkedin'));
 
-app.get('/auth/linkedin/callback', 
-  passport.authenticate('linkedin', { 
-    failureRedirect: 'http://localhost:3000/input',
-    successRedirect: 'http://localhost:3000/input'
-  })
-);
+let userStore = {}; // In-memory store (use Redis in production)
 
-// LinkedIn API routes
-app.get('/api/linkedin/profile', async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+passport.serializeUser((user, done) => {
+  const id = user.id;
+  userStore[id] = user;               // keep full object for dev
+  console.log('serializeUser →', id);
+  done(null, id);
+});
+
+passport.deserializeUser((id, done) => {
+  const user = userStore[id];
+  console.log('deserializeUser →', id, user ? 'FOUND' : 'MISSING');
+  done(null, user || false);
+});
+// 1. First, replace your LinkedIn Strategy configuration:
+// OPTION 1: Let Passport handle state (RECOMMENDED - simpler)
+
+
+const OAuth2Strategy = require('passport-oauth2');
+
+passport.use('linkedin', new OAuth2Strategy({
+  authorizationURL: 'https://www.linkedin.com/oauth/v2/authorization',
+  tokenURL: 'https://www.linkedin.com/oauth/v2/accessToken',
+  clientID: process.env.LINKEDIN_CLIENT_ID,
+  clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+  callbackURL: 'http://localhost:4000/auth/linkedin/callback',
+  scope: ['openid', 'profile', 'email'], // These are the only scopes that work
+  state: true
+}, async (accessToken, refreshToken, params, profile, done) => {
+  try {
+    console.log('\n🔄 OAuth2 Strategy Callback Triggered');
+    console.log('Access Token:', accessToken ? 'Present ✓' : 'Missing ✗');
+    
+    // Store access token for later use
+    const tokenData = {
+      accessToken,
+      refreshToken,
+      expiresIn: params.expires_in,
+      scope: params.scope
+    };
+
+    // 1. Fetch OpenID Connect userinfo (this works ✓)
+    const userInfoResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const profileData = userInfoResponse.data;
+    console.log('✓ Got LinkedIn userinfo:', JSON.stringify(profileData, null, 2));
+
+    // 2. Try to fetch v2/me (basic profile - might work with some data)
+    let meData = null;
+    try {
+      const meResponse = await axios.get('https://api.linkedin.com/v2/me', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': '202405' // Try latest API version
+        }
+      });
+      meData = meResponse.data;
+      console.log('✓ Got v2/me data:', JSON.stringify(meData, null, 2));
+    } catch (err) {
+      console.log('✗ v2/me failed:', err.response?.status, err.response?.data?.message);
+    }
+
+    // 3. Try to fetch email separately (might give more details)
+    let emailData = null;
+    try {
+      const emailResponse = await axios.get(
+        'https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))',
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+      );
+      emailData = emailResponse.data;
+      console.log('✓ Got email data:', JSON.stringify(emailData, null, 2));
+    } catch (err) {
+      console.log('✗ Email endpoint failed:', err.response?.status, err.response?.data?.message);
+    }
+
+    // 4. Try to fetch profile (lite profile - will likely fail)
+    let liteProfile = null;
+    try {
+      const profileResponse = await axios.get(
+        'https://api.linkedin.com/v2/me?projection=(id,firstName,lastName,profilePicture(displayImage~:playableStreams))',
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+      );
+      liteProfile = profileResponse.data;
+      console.log('✓ Got lite profile:', JSON.stringify(liteProfile, null, 2));
+    } catch (err) {
+      console.log('✗ Lite profile failed:', err.response?.status, err.response?.data?.message);
+    }
+
+    // 5. Try to fetch positions/experience (will likely fail - requires r_basicprofile)
+    let positions = null;
+    try {
+      const positionsResponse = await axios.get(
+        'https://api.linkedin.com/v2/positions?q=members&projection=(elements*(company,title))',
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+      );
+      positions = positionsResponse.data;
+      console.log('✓ Got positions:', JSON.stringify(positions, null, 2));
+    } catch (err) {
+      console.log('✗ Positions failed:', err.response?.status, err.response?.data?.message);
+    }
+
+    // 6. Try to fetch skills (will likely fail)
+    let skills = null;
+    try {
+      const skillsResponse = await axios.get(
+        'https://api.linkedin.com/v2/skills?q=members',
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+      );
+      skills = skillsResponse.data;
+      console.log('✓ Got skills:', JSON.stringify(skills, null, 2));
+    } catch (err) {
+      console.log('✗ Skills failed:', err.response?.status, err.response?.data?.message);
+    }
+
+    // Build comprehensive user object with ALL available data
+    const user = {
+      // Basic identity (from OpenID - guaranteed to work)
+      id: profileData.sub,
+      firstName: profileData.given_name || '',
+      lastName: profileData.family_name || '',
+      fullName: profileData.name || '',
+      email: profileData.email || '',
+      emailVerified: profileData.email_verified || false,
+      pictureUrl: profileData.picture || '',
+      locale: profileData.locale || null,
+      
+      // Additional data if available
+      vanityName: profileData.email?.split('@')[0] || '',
+      
+      // Store raw API responses for debugging
+      rawData: {
+        userInfo: profileData,
+        me: meData,
+        email: emailData,
+        liteProfile: liteProfile,
+        positions: positions,
+        skills: skills
+      },
+      
+      // Token info (store if you need to make API calls later)
+      tokens: tokenData,
+      
+      // Placeholder arrays (will be empty unless API returns data)
+      experience: positions?.elements || [],
+      skills: skills?.elements || [],
+      education: [] // No endpoint for this with current scopes
+    };
+
+    console.log('\n✓ FINAL USER OBJECT:');
+    console.log(JSON.stringify(user, null, 2));
+    console.log('\n📊 DATA SUMMARY:');
+    console.log(`  Name: ${user.fullName}`);
+    console.log(`  Email: ${user.email}`);
+    console.log(`  Picture: ${user.pictureUrl ? 'Yes' : 'No'}`);
+    console.log(`  Experience: ${user.experience.length} items`);
+    console.log(`  Skills: ${user.skills.length} items`);
+    
+    return done(null, user);
+    
+  } catch (err) {
+    console.error('✗ LinkedIn profile fetch error:', err.message);
+    if (err.response) {
+      console.error('Response status:', err.response.status);
+      console.error('Response data:', JSON.stringify(err.response.data, null, 2));
+    }
+    return done(err);
+  }
+}));
+
+// Initial auth route - DON'T set state manually
+app.get('/auth/linkedin', (req, res, next) => {
+  console.log('\n🔐 /auth/linkedin hit - initiating OAuth');
+  passport.authenticate('linkedin', {
+    scope: ['openid', 'profile', 'email']
+  })(req, res, next);
+});
+
+// Callback route - DON'T check state manually, passport does it
+app.get('/auth/linkedin/callback', (req, res, next) => {
+  console.log('\n✓ CALLBACK HIT');
+  console.log('Code present:', !!req.query.code);
+  console.log('Error in query:', req.query.error);
+
+  // Check for OAuth errors from LinkedIn
+  if (req.query.error) {
+    console.error('✗ OAuth error:', req.query.error, req.query.error_description);
+    return res.redirect('http://localhost:3000/input?error=oauth_' + req.query.error);
+  }
+
+  // Authenticate with passport
+  passport.authenticate('linkedin', (err, user, info) => {
+    if (err) {
+      console.error('✗ Auth error:', err.message);
+      console.error('Error details:', err);
+      return res.redirect('http://localhost:3000/input?error=auth_failed');
+    }
+
+    if (!user) {
+      console.error('✗ No user returned');
+      console.error('Info:', info);
+      return res.redirect('http://localhost:3000/input?error=no_user');
+    }
+
+    console.log('✓ User authenticated:', user.id);
+    console.log('User data:', JSON.stringify(user, null, 2));
+
+    // Log the user in
+    req.login(user, (loginErr) => {
+      if (loginErr) {
+        console.error('✗ req.login failed:', loginErr.message);
+        return res.redirect('http://localhost:3000/input?error=login_failed');
+      }
+
+      console.log('✓ Login successful!');
+      console.log('  Session ID:', req.sessionID);
+      console.log('  User stored:', !!req.user);
+      
+      res.redirect('http://localhost:3000/input?linkedin=success');
+    });
+  })(req, res, next);
+});
+
+app.get('/debug/linkedin-token', async (req, res) => {
+  const testToken = req.query.token;
+  if (!testToken) {
+    return res.json({ error: 'Provide ?token=YOUR_ACCESS_TOKEN' });
   }
 
   try {
-    const linkedInApi = new LinkedInAPI(req.user.accessToken);
-    const [profile, email] = await Promise.all([
-      linkedInApi.getProfile(),
-      linkedInApi.getEmailAddress()
+    const [userinfo, email] = await Promise.all([
+      axios.get('https://api.linkedin.com/v2/userinfo', {
+        headers: { Authorization: `Bearer ${testToken}` }
+      }),
+      axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
+        headers: { Authorization: `Bearer ${testToken}` }
+      })
     ]);
 
     res.json({
-      ...profile,
-      email
+      userinfo: userinfo.data,
+      email: email.data
     });
-  } catch (error) {
-    console.error('LinkedIn API Error:', error);
-    res.status(500).json({ error: 'Failed to fetch LinkedIn profile' });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+      status: err.response?.status,
+      data: err.response?.data
+    });
   }
 });
+app.get('/api/linkedin/status', (req, res) => {
+  console.log('\n📋 /api/linkedin/status');
+  console.log(`  → Authenticated: ${req.isAuthenticated()}`);
+  console.log(`  → User: ${req.user?.id || 'NONE'}`);
+  console.log(`  → Session ID: ${req.sessionID}`);
+  console.log(`  → User store size: ${Object.keys(userStore).length}\n`);
+  
+  res.json({
+    authenticated: !!req.user,
+    user: req.user ? {
+      id: req.user.id,
+      name: `${req.user.firstName} ${req.user.lastName}`,
+      email: req.user.email
+    } : null
+  });
+});
 
-// LinkedIn OAuth routes
-app.get('/auth/linkedin', passport.authenticate('linkedin'));
+const puppeteer = require('puppeteer');
 
-app.get('/auth/linkedin/callback', 
-  passport.authenticate('linkedin', { failureRedirect: '/login' }),
-  function(req, res) {
-    res.redirect('http://localhost:3000/input');
+app.post('/api/linkedin/public', async (req, res) => {
+  let { url } = req.body;
+  if (!url?.includes('linkedin.com/in/')) return res.status(400).json({ error: 'Invalid URL' });
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.waitForSelector('script[type="application/ld+json"]', { timeout: 10000 });
+
+    const json = await page.evaluate(() => {
+      const script = document.querySelector('script[type="application/ld+json"]');
+      return script ? JSON.parse(script.textContent) : null;
+    });
+
+    await browser.close();
+
+    if (!json) throw new Error('No JSON-LD found');
+
+    res.json({
+      name: json.name || 'Unknown',
+      headline: json.description || '',
+      image: json.image || '',
+      worksFor: (json.worksFor || []).map(w => ({
+        company: w.name || w.organization?.name || '',
+        jobTitle: w.jobTitle || ''
+      }))
+    });
+  } catch (err) {
+    if (browser) await browser.close();
+    console.warn('Public parse failed:', err.message);
+    res.json({ name: 'Profile', headline: 'Private', image: '', worksFor: [] });
   }
-);
+});
+// ---- NEW ENDPOINT (add after /api/linkedin/profile) ----
+// server/routes/linkedin.js
+app.get('/api/linkedin/avatar', async (req, res) => {
+  const token = req.cookies.accessToken;
+  const r = await fetch('https://api.linkedin.com/v2/me?projection=(profilePicture(displayImage~:playableStreams))', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await r.json();
+  const url = data.profilePicture?.['displayImage~']?.elements?.[0]?.identifiers?.[0]?.identifier;
+  if (!url) return res.status(404).send();
+  const img = await fetch(url);
+  res.set('Content-Type', img.headers.get('content-type'));
+  img.body.pipe(res);
+});
+// LinkedIn API routes
+app.get('/api/linkedin/profile', (req, res) => {
+  console.log('\n👤 /api/linkedin/profile');
+  console.log(`  → Authenticated: ${req.isAuthenticated()}`);
+  console.log(`  → User: ${req.user?.id || 'NONE'}\n`);
 
-app.get('/api/linkedin/profile', async (req, res) => {
-  if (!req.user) {
+  if (!req.isAuthenticated() || !req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  try {
-    const response = await axios.get('https://api.linkedin.com/v2/me', {
-      headers: {
-        'Authorization': `Bearer ${req.user.accessToken}`,
-        'cache-control': 'no-cache',
-        'X-Restli-Protocol-Version': '2.0.0'
-      }
-    });
-
-    res.json(response.data);
-  } catch (error) {
-    console.error('LinkedIn API Error:', error);
-    res.status(500).json({ error: 'Failed to fetch LinkedIn profile' });
-  }
+  // Return everything we managed to fetch
+  res.json({
+    // User identity
+    id: req.user.id,
+    firstName: req.user.firstName,
+    lastName: req.user.lastName,
+    fullName: req.user.fullName,
+    email: req.user.email,
+    emailVerified: req.user.emailVerified,
+    pictureUrl: req.user.pictureUrl,
+    vanityName: req.user.vanityName,
+    locale: req.user.locale,
+    
+    // Additional data (likely empty with current scopes)
+    experience: req.user.experience,
+    skills: req.user.skills,
+    education: req.user.education,
+    
+    // Raw API responses for frontend debugging
+    debug: {
+      availableEndpoints: Object.keys(req.user.rawData),
+      apiResponses: req.user.rawData
+    }
+  });
 });
-// /auth/linkedin/callback
-app.get(
-  '/auth/linkedin/callback',
-  passport.authenticate('linkedin', { failureRedirect: 'http://localhost:3000/input' }),
-  (req, res) => {
-    // req.user now has email, phone, headline, etc.
-    console.log('Logged in user:', req.user.firstName, 'Email:', req.user.email, 'Phone:', req.user.phone);
-    res.redirect('http://localhost:3000/results');
+
+
+// LinkedIn OAuth routes
+
+app.get('/api/linkedin/experience', (req, res) => {
+  if (!req.user?.experience) {
+    return res.status(401).json({ error: 'No LinkedIn data' });
   }
-);
-// In server.js – add this after LinkedIn routes
-app.get('/api/linkedin/experience', async (req, res) => {
-  if (!req.user?.profileUrl) return res.status(401).json({ error: 'No LinkedIn profile' });
-
-  try {
-    const response = await axios.get(
-      `https://nubela.co/proxycurl/api/linkedin/v2/person?linkedin_profile_url=${encodeURIComponent(req.user.profileUrl)}`,
-      {
-        headers: { Authorization: `Bearer ${process.env.PROXYCURL_API_KEY}` },  // Get from Proxycurl dashboard
-        params: { use_post: true }  // For detailed experience
-      }
-    );
-
-    const experience = response.data.experience?.map(exp => ({
-      title: exp.title || '',
-      company: exp.company_name || '',
-      companyUrl: exp.company_linkedin_url || '',
-      startDate: exp.start.year || '',
-      endDate: exp.end.year || 'Present',
-      description: exp.description || '',
-    })) || [];
-
-    res.json({ experience });
-  } catch (err) {
-    console.error('Proxycurl error:', err.response?.data || err);
-    res.status(500).json({ error: 'Failed to fetch experience' });
-  }
+  res.json({ experience: req.user.experience });
 });
+
+// Logout
+app.get('/api/linkedin/logout', (req, res) => {
+  const userId = req.user?.id;
+  
+  req.logout((err) => {
+    if (err) console.error('Logout error:', err);
+  });
+
+  if (userId) {
+    delete userStore[userId];
+    console.log(`✓ User removed: ${userId}`);
+  }
+
+  req.session.destroy(() => {
+    console.log('✓ Session destroyed');
+  });
+
+  res.redirect('http://localhost:3000/input');
+});
+
+app.get('/api/linkedin/debug-data', (req, res) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  res.json({
+    summary: {
+      name: req.user.fullName,
+      email: req.user.email,
+      picture: req.user.pictureUrl,
+      experienceCount: req.user.experience?.length || 0,
+      skillsCount: req.user.skills?.length || 0
+    },
+    rawApiResponses: req.user.rawData,
+    availableScopes: req.user.tokens?.scope || 'unknown',
+    tokenExpiry: req.user.tokens?.expiresIn || 'unknown'
+  });
+});
+// Replace your /api/linkedin/experience endpoint
+
+
 // Portfolio HTML Generation Function
 function generatePortfolioHTML(resumeData) {
   const {
@@ -941,21 +1291,30 @@ Remember: Respond with ONLY the JSON object, no other text.`;
     }
 
     // Construct response
-    const response = {
-      githubUsername,
-      categorizedSkills,
-      bestProjects,
-      summary: aiOutput.summary,
-      workExperience: customSections.Experience?.items || aiOutput.enhancedExperience,
-      education: customSections.Education?.content || educationString,
-      contactInfo: {
-        email: contactInfo.email || "example@email.com",
-        mobile: contactInfo.mobile || "+91 1234567890",
-        linkedin: contactInfo.linkedin || "",
-      },
-      customSections,
-      template,
-    };
+function getFullName(linkedinUser, githubUsername) {
+  if (linkedinUser?.firstName && linkedinUser?.lastName) {
+    return `${linkedinUser.firstName} ${linkedinUser.lastName}`.trim();
+  }
+  return githubUsername || "Your Name";
+}const fullName = getFullName(req.user, githubUsername);
+
+const response = {
+  githubUsername,
+  fullName,                     // <-- NEW
+  linkedinPicture: req.user?.pictureUrl || null, // <-- NEW
+  categorizedSkills,
+  bestProjects,
+  summary: aiOutput.summary,
+  workExperience: customSections.Experience?.items || aiOutput.enhancedExperience,
+  education: customSections.Education?.content || educationString,
+  contactInfo: {
+    email: contactInfo.email || "example@email.com",
+    mobile: contactInfo.mobile || "+91 1234567890",
+    linkedin: contactInfo.linkedin || "",
+  },
+  customSections,
+  template,
+};
 
     res.json(response);
   } catch (error) {
