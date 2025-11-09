@@ -109,7 +109,23 @@ const handleSubmit = async (e) => {
       linkedinUrl: formData.contactInfo.linkedin,
     }, { withCredentials: true });  // Add this!
 
-    setData(response.data);
+
+  let leetcodeData = null;
+    if (formData.leetcodeUser) {
+      try {
+        const lcResponse = await axios.post('http://localhost:4000/api/leetcode', {
+          username: formData.leetcodeUser,
+        });
+        leetcodeData = lcResponse.data;
+        console.log("✅ LeetCode frontend received:", leetcodeData);
+      } catch (err) {
+        console.warn("⚠️ LeetCode fetch failed:", err.message);
+      }
+    }
+
+    const finalData = { ...response.data, leetcodeData };
+setData(finalData);
+
     setAiOverview(response.data.summary || '');
     navigate('/results');
   } catch (err) {
