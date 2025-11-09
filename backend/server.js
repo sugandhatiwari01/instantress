@@ -70,6 +70,63 @@ passport.deserializeUser((id, done) => {
 // OPTION 1: Let Passport handle state (RECOMMENDED - simpler)
 
 
+// ===== LeetCode Profile API =====
+app.post("/api/leetcode", async (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: "LeetCode username is required" });
+  }
+
+  try {
+    const query = {
+      query: `
+        query getUserProfile($username: String!) {
+          matchedUser(username: $username) {
+            username
+            profile {
+              ranking
+            }
+            languageProblemCount {
+              languageName
+              problemsSolved
+            }
+          }
+        }
+      `,
+      variables: { username },
+    };
+
+    const response = await axios.post("https://leetcode.com/graphql", query, {
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://leetcode.com",
+      },
+    });
+
+    const data = response.data?.data?.matchedUser;
+    if (!data) return res.status(404).json({ error: "LeetCode user not found" });
+
+    const languages = data.languageProblemCount?.map(l => ({
+      name: l.languageName,
+      solved: l.problemsSolved,
+    })) || [];
+
+    res.json({
+      username: data.username,
+      rank: data.profile?.ranking || "N/A",
+      languages,
+    });
+  } catch (error) {
+    console.error("LeetCode fetch error:", error.message);
+    res.status(500).json({ error: "Failed to fetch LeetCode data" });
+  }
+});
+
+
+
+
 const OAuth2Strategy = require('passport-oauth2');
 
 passport.use('linkedin', new OAuth2Strategy({
@@ -1014,64 +1071,67 @@ app.post("/api/process-data", async (req, res) => {
 
     // LeetCode optional fetch
     let leetcodeLanguages = [];
-    if (leetcodeUser) {
-      try {
-        // First verify the user exists
-        const userQuery = {
-          query: `query userPublicProfile($username: String!) {
-            matchedUser(username: $username) {
-              username
-            }
-          }`,
-          variables: { username: leetcodeUser },
-        };
-        
-        // Verify that the LeetCode user actually exists before pulling stats
-        try {
-          await axios.post("https://leetcode.com/graphql", userQuery, {
-            headers: { "Content-Type": "application/json" },
-          });
-        } catch (e) {
-          // 400 = user does not exist – swallow it and continue
-          if (e.response?.status === 400) {
-            console.warn("LeetCode user not found (verification step):", leetcodeUser);
-            return; // skip the detailed stats request
-          }
-          throw e; // any other error should bubble up
-        }
+if (leetcodeUser) {
+  try {
+    console.log("🔍 Fetching LeetCode data for:", leetcodeUser);
 
-        // Then fetch detailed stats
-        const query = {
-          query: `query getUserProfile($username: String!) {
-            matchedUser(username: $username) {
-              username
-              submitStats { acSubmissionNum { difficulty count } }
-              languageProblemCount { languageName count }
+    const query = {
+      query: `
+        query getUserProfile($username: String!) {
+          matchedUser(username: $username) {
+            username
+            profile { ranking reputation countryName }
+            languageProblemCount {
+              languageName
+              problemsSolved
             }
-          }`,
-          variables: { username: leetcodeUser },
-        };
-        const lcRes = await axios.post("https://leetcode.com/graphql", query, {
-          headers: { "Content-Type": "application/json" },
-        });
-        const lcData = lcRes.data?.data?.matchedUser;
-        if (lcData) {
-          if (lcData.submitStats?.acSubmissionNum?.find(s => s.difficulty === "Medium")?.count > 50) {
-            leetcodeLanguages = ["C", "C++"];
+            submitStatsGlobal {
+              acSubmissionNum {
+                difficulty
+                count
+              }
+            }
           }
-          if (lcData.languageProblemCount) {
-            leetcodeLanguages = [...leetcodeLanguages, ...lcData.languageProblemCount.map(l => l.languageName)];
-          }
-        }
-      } catch (err) {
-        if (err.response?.status === 400) {
-          console.warn("LeetCode user not found:", leetcodeUser);
-        } else {
-          console.warn("LeetCode fetch failed:", err.message);
-        }
-        // Don't fail the entire request for LeetCode issues
-      }
+        }`,
+      variables: { username: leetcodeUser },
+    };
+
+    const lcRes = await axios.post("https://leetcode.com/graphql", query, {
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Referer": "https://leetcode.com",
+      },
+    });
+
+    const lcData = lcRes.data?.data?.matchedUser;
+
+    if (!lcData) {
+      console.warn("⚠️ No user data returned from LeetCode for:", leetcodeUser);
+    } else {
+      console.log("✅ LeetCode user found:", lcData.username);
+      console.log("🏆 Rank:", lcData.profile?.ranking);
+      console.log("💻 Languages:", lcData.languageProblemCount?.map(l => l.languageName));
+
+      // Save parsed results
+      req.leetcodeData = {
+        username: lcData.username,
+        rank: lcData.profile?.ranking || "N/A",
+        languagesUsed: lcData.languageProblemCount?.map(l => ({
+          name: l.languageName,
+          solved: l.problemsSolved,
+        })) || [],
+      };
     }
+  } catch (err) {
+    console.error("❌ LeetCode fetch failed:", err.message);
+    if (err.response) {
+      console.error("Status:", err.response.status);
+      console.error("Data:", err.response.data);
+    }
+  }
+}
+
     allLanguages = [...new Set([...allLanguages, ...leetcodeLanguages])];
 
     // Categorize Skills
