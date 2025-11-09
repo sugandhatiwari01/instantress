@@ -203,6 +203,7 @@ const [hasInitialized, setHasInitialized] = useState(false);
     education: true,
     certifications: true,
     hobbies: true,
+    leetcode: true,
   });
 
   /* ---------- Auto-fill from LinkedIn (once) ---------- */
@@ -773,6 +774,34 @@ src="http://localhost:4000/api/linkedin/avatar"
             </div>
           ))}
         </div>
+{resumeData.leetcodeData && (
+  <Section
+    title="LeetCode Profile"
+    icon="🧩"
+    expanded={expandedSections.leetcode}
+    onToggle={() => toggleSection('leetcode')}
+  >
+    <p><strong>Username:</strong> {resumeData.leetcodeData.username}</p>
+    <p><strong>Rank:</strong> {resumeData.leetcodeData.rank}</p>
+
+    <h4>Languages Used:</h4>
+    <ul>
+      {resumeData.leetcodeData.languagesUsed?.length > 0 ? (
+        resumeData.leetcodeData.languagesUsed.map((lang, i) => (
+          <li key={i}>
+            {lang.name} — {lang.solved} problems solved
+          </li>
+        ))
+      ) : (
+        <li>No language data found</li>
+      )}
+    </ul>
+  </Section>
+)}
+
+
+
+
       </div>
 
       {/* Summary */}
