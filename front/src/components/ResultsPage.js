@@ -187,7 +187,7 @@ const ResultsPage = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();                     // <-- inside component
-
+const [hasInitialized, setHasInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('resume');
   const [portfolioCode, setPortfolioCode] = useState('');
   const [resumeData, setResumeData] = useState({});
@@ -206,65 +206,92 @@ const ResultsPage = ({
   });
 
   /* ---------- Auto-fill from LinkedIn (once) ---------- */
-  useEffect(() => {
-    if (!user) return;
+// 1. Backend gave us full resume data → use it
+useEffect(() => {
+    if (data && Object.keys(data).length > 0) {
+      const normalized = {
+        ...data,
+        githubUsername: data.name || data.linkedInProfile?.fullName || data.githubUsername || 'Your Name',
+        profilePictureUrl: data.linkedInProfile?.pictureUrl || null,
+        headline: data.linkedInProfile?.headline || 'Software Developer',
+        contactInfo: {
+          email: data.linkedInProfile?.email || data.contactInfo?.email || '',
+          mobile: data.contactInfo?.mobile || '',
+          linkedin: data.contactInfo?.linkedin || '',
+        },
+        projects: {
+          title: 'Projects',
+          items: (data.bestProjects || []).map(p => ({
+            name: p.name || '',
+            html_url: p.url || p.html_url || '',
+            description: p.description || '',
+            technologies: p.technologies || [],
+            stars: p.stars || p.stargazers_count || 0,
+            isEditable: true,
+          })),
+        },
+        experience: data.workExperience && Array.isArray(data.workExperience)
+          ? { title: 'Experience', items: data.workExperience }
+          : { title: 'Experience', items: [] },
+      };
+      setResumeData(normalized);
+      setLocalError('');
+      return;
+    }
 
-    // Fill only when we have a logged-in user **and** no resume data yet
-    if (!data && Object.keys(resumeData).length === 0) {
-      const linkedInFill = {
+    // 2. No backend data → initialise from LinkedIn user (if logged in)
+    if (user && Object.keys(resumeData).length === 0) {
+      const linkedInInit = {
         githubUsername:
-          `${user.firstName?.toLowerCase()}${user.lastName?.toLowerCase()}` || '',
+          user.fullName ||
+          user.name ||
+          `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+          'Your Name',
+        profilePictureUrl: user.pictureUrl || user.picture || null,
+        headline: user.headline || 'Software Developer',
         contactInfo: {
           email: user.email || '',
           linkedin: user.profileUrl || '',
           mobile: '',
         },
-        summary: user.headline
-          ? `Seasoned professional with experience in ${user.headline}.`
-          : 'Seasoned professional.',
-        // pictureUrl & headline are used in UI only
+        summary: '',
+        categorizedSkills: {},
+        projects: { title: 'Projects', items: [] },
+        experience: { title: 'Experience', items: [] },
       };
+      setResumeData(linkedInInit);
+    }
+  }, [data, user]);
 
-      setResumeData(prev => ({ ...prev, ...linkedInFill }));
-    }
-  }, [user, data, resumeData]);
-// In ResultsPage or after login success
-useEffect(() => {
-  if (user?.profileUrl) {
-    fetch('http://localhost:4000/api/linkedin/experience')
-      .then(r => r.json())
-      .then(({ experience }) => {
-        if (experience.length) {
-          setResumeData(prev => ({
-            ...prev,
-            experience: { title: 'Experience', items: experience },
-          }));
-        }
-      })
-      .catch(err => console.error('Experience fetch failed:', err));
-  }
-}, [user]);
-  /* ---------- Initialize resume data from props ---------- */
-  useEffect(() => {
-    if (!data) {
-      if (!initialIsLoading) setLocalError('No data available');
-      return;
-    }
-    if (typeof data !== 'object') {
-      setLocalError('Invalid data format');
-      return;
-    }
+  /* ---------- OPTIONAL: fetch LinkedIn experience (keep if you need it) ---------- */
+ useEffect(() => {
+  if (hasInitialized) return;
 
+  if (data && Object.keys(data).length > 0) {
     const normalized = {
       ...data,
+      githubUsername:
+        data.linkedInProfile?.fullName ||
+        user?.fullName ||
+        data.name ||
+        data.githubUsername ||
+        `${user?.firstName || ''} ${user?.lastName || ''}`.trim() ||
+        'Your Name',
+      profilePictureUrl: data.linkedInProfile?.pictureUrl || null,
+      headline: data.linkedInProfile?.headline || 'Software Developer',
+      contactInfo: {
+        email: data.linkedInProfile?.email || data.contactInfo?.email || '',
+        mobile: data.contactInfo?.mobile || '',
+        linkedin: data.contactInfo?.linkedin || '',
+      },
       projects: {
         title: 'Projects',
         items: (data.bestProjects || []).map(p => ({
           name: p.name || '',
-          html_url: p.url || '',
+          html_url: p.url || p.html_url || '',
           description: p.description || '',
           technologies: p.technologies || [],
-          stars: p.stars || 0,
+          stars: p.stars || p.stargazers_count || 0,
           isEditable: true,
         })),
       },
@@ -272,41 +299,57 @@ useEffect(() => {
         ? { title: 'Experience', items: data.workExperience }
         : { title: 'Experience', items: [] },
     };
-
     setResumeData(normalized);
     setLocalError('');
-  }, [data, initialIsLoading]);
+  } else if (user) {
+    const linkedInInit = {
+      githubUsername:
+        user.fullName ||
+        user.name ||
+        `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+        'Your Name',
+      profilePictureUrl: user.pictureUrl || user.picture || null,
+      headline: user.headline || 'Software Developer',
+      contactInfo: {
+        email: user.email || '',
+        linkedin: user.profileUrl || '',
+        mobile: '',
+      },
+      summary: '',
+      categorizedSkills: {},
+      projects: { title: 'Projects', items: [] },
+      experience: { title: 'Experience', items: [] },
+    };
+    setResumeData(linkedInInit);
+  }
 
+  setHasInitialized(true);
+}, [data, user, hasInitialized]);
   /* ---------- Helpers (unchanged) ---------- */
   const toggleSection = sec => setExpandedSections(prev => ({ ...prev, [sec]: !prev[sec] }));
 const startEditing = (section, index, field) => {
-  const key =
-    index !== undefined
-      ? `${section}_${index}_${field}`
-      : field
-      ? `${section}_${field}`
-      : section;
+  const key = index !== undefined
+    ? `${section}_${index}_${field}`
+    : `${section}${field ? `_${field}` : ''}`;
 
   setIsEditing(prev => ({ ...prev, [key]: true }));
 
-    let value = '';
-    if (index !== undefined) {
-      value = resumeData[section.toLowerCase()]?.items?.[index]?.[field] || '';
-    } else if (section === 'Skills' || section === 'Certifications') {
-      value = (resumeData[section.toLowerCase()]?.items || []).join(', ');
-    } else if (section === 'ContactInfo') {
-  value = resumeData.contactInfo?.[field] || '';
-    } else if (section === 'Education') {
-      value = formatEducation(resumeData.education);
-    } else if (section === 'Hobbies') {
-      value = formatHobbies(resumeData.hobbies);
-    } else if (section === 'Summary') {
-      value = resumeData.summary || aiOverview || '';
-    } else {
-      value = formatCustomSection(resumeData.customSections?.[section]);
-    }
-    setEditValues(prev => ({ ...prev, [key]: value }));
-  };
+  let value = '';
+  if (index !== undefined) {
+    value = resumeData[section.toLowerCase()]?.items?.[index]?.[field] || '';
+  } else if (section === 'Summary') {
+    value = resumeData.summary || aiOverview || '';
+  } else if (section === 'Skills') {
+    const skills = resumeData.categorizedSkills || {};
+    value = Object.entries(skills)
+      .map(([cat, list]) => `${cat}: ${list.join(', ')}`)
+      .join('; ');
+  } else if (section === 'ContactInfo' && field) {
+    value = resumeData.contactInfo?.[field] || '';
+  }
+
+  setEditValues(prev => ({ ...prev, [key]: value }));
+};
 
 const saveEdit = (section, index, field) => {
   if (section === 'githubUsername') {
@@ -344,14 +387,23 @@ const saveEdit = (section, index, field) => {
     return;
   }
 
-  if (section === 'Skills') {
-    setResumeData((prev) => ({
-      ...prev,
-      skills: editValues.Skills || prev.skills,
-    }));
-    setIsEditing((prev) => ({ ...prev, Skills: false }));
-    return;
-  }
+if (section === 'Skills') {
+  const raw = editValues.Skills || '';
+  const categories = {};
+  raw.split(';').forEach(line => {
+    const [cat, ...rest] = line.split(':').map(s => s.trim());
+    if (cat && rest.length) {
+      categories[cat] = rest.join(':').split(',').map(s => s.trim());
+    }
+  });
+  const final = Object.keys(categories).length
+    ? categories
+    : { Skills: raw.split(',').map(s => s.trim()) };
+
+  setResumeData(prev => ({ ...prev, categorizedSkills: final }));
+  setIsEditing(prev => ({ ...prev, Skills: false }));
+  return;
+}
 
   if (section === 'Projects' && index !== undefined && field) {
     setResumeData((prev) => {
@@ -599,67 +651,72 @@ const renderPortfolioTab = () => (
   const renderResumeTab = () => (
     <>
       {/* Header */}
-      <div style={styles.headerCard}>
-        <div style={styles.headerTop}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {/* Profile picture */}
-            {user?.pictureUrl ? (
-              <img
-                src={user.pictureUrl}
-                alt="Profile"
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '3px solid #9333ea',
-                }}
-              />
+       <div style={styles.headerCard}>
+      <div style={styles.headerTop}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Profile picture - now using resumeData */}
+          {resumeData.profilePictureUrl ? (
+            <img
+src="http://localhost:4000/api/linkedin/avatar"   
+                  alt="Profile"
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '3px solid #9333ea',
+              }}
+              onError={(e) => {
+                // Fallback if image fails to load
+                e.target.style.display = 'none';
+                console.error('Failed to load profile picture');
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                background: '#e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 32,
+                color: '#6b7280',
+                fontWeight: 'bold'
+              }}
+            >
+              {resumeData.githubUsername?.[0]?.toUpperCase() || '?'}
+            </div>
+          )}
+
+          {/* Name + Headline */}
+          <div>
+            {isEditing.githubUsername ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  style={styles.nameInput}
+                  value={editValues.githubUsername || ''}
+                  onChange={e => handleEditChange('githubUsername', e.target.value)}
+                />
+                <button style={styles.saveButton} onClick={() => saveEdit('githubUsername')}>
+                  Save
+                </button>
+              </div>
             ) : (
-              <div
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  background: '#e5e7eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 32,
-                  color: '#6b7280',
-                }}
-              >
-                {user?.firstName?.[0] || '?'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h1 style={styles.name}>{resumeData.githubUsername || 'Your Name'}</h1>
+                <button style={styles.editButtonSmall} onClick={() => startEditing('githubUsername')}>
+                  Edit
+                </button>
               </div>
             )}
-
-            {/* Name + Headline */}
-            <div>
-              {isEditing.githubUsername ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    style={styles.nameInput}
-                    value={editValues.githubUsername || ''}
-                    onChange={e => handleEditChange('githubUsername', e.target.value)}
-                  />
-                  <button style={styles.saveButton} onClick={() => saveEdit('githubUsername')}>
-                    Save
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h1 style={styles.name}>{resumeData.githubUsername || 'Your Name'}</h1>
-                  <button style={styles.editButtonSmall} onClick={() => startEditing('githubUsername')}>
-                    Edit
-                  </button>
-                </div>
-              )}
-              <p style={styles.headline}>
-                {user?.headline || 'Software Developer'}
-              </p>
-            </div>
+            <p style={styles.headline}>
+              {resumeData.headline || 'Software Developer'}
+            </p>
           </div>
-
+        </div>
           {/* Action Buttons */}
           <div style={styles.buttonGroup}>
             <button
@@ -726,46 +783,39 @@ const renderPortfolioTab = () => (
   expanded={expandedSections.summary}
   onToggle={() => toggleSection('summary')}
 >
-  {isEditing.Summary ? (
-    <div style={styles.editContainer}>
-      <textarea
-        style={styles.textarea}
-        rows={4}
-        value={editValues.Summary || ''}
-        onChange={(e) => handleEditChange('Summary', e.target.value)}
-      />
+{isEditing.Summary ? (
+  <div style={styles.editContainer}>
+    <textarea
+      style={styles.textarea}
+      rows={4}
+      value={editValues.Summary || ''}
+      onChange={(e) => handleEditChange('Summary', e.target.value)}
+    />
+    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+      <button style={styles.saveButton} onClick={() => saveEdit('Summary')}>
+        Save
+      </button>
       <button
-  style={{
-    ...styles.editButtonSmall,
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    width: 'auto',
-    padding: '4px 10px',
-    fontSize: 14,
-  }}
-  onClick={() => startEditing('Summary')}
->
-  Edit
-</button>
-
-    </div>
-  ) : (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: 0, textAlign: 'justify', lineHeight: '1.6' }}>
-        {resumeData.summary || aiOverview || 'No summary'}
-      </p>
-      <button
-        style={{
-          ...styles.editButtonSmall,
-          alignSelf: 'flex-start',
-          marginTop: 8,
-        }}
-        onClick={() => startEditing('Summary')}
+        style={{ ...styles.saveButton, background: '#6b7280' }}
+        onClick={() => setIsEditing(prev => ({ ...prev, Summary: false }))}
       >
-        Edit
+        Cancel
       </button>
     </div>
-  )}
+  </div>
+) : (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <p style={{ margin: 0, textAlign: 'justify', lineHeight: '1.6' }}>
+      {resumeData.summary || aiOverview || 'No summary'}
+    </p>
+    <button
+      style={{ ...styles.editButtonSmall, alignSelf: 'flex-start' }}
+      onClick={() => startEditing('Summary')}
+    >
+      Edit
+    </button>
+  </div>
+)}
 </Section>
 
 
@@ -957,7 +1007,36 @@ const renderPortfolioTab = () => (
   )}
 </Section>
 
+<Section
+  title="Experience"
+  icon="Experience"
+  expanded={expandedSections.experience}
+  onToggle={() => toggleSection('experience')}
+>
+  <button style={styles.addButton} onClick={() => addItem('Experience')}>
+    Add Experience
+  </button>
 
+  {resumeData.experience?.items?.length ? (
+    resumeData.experience.items.map((exp, i) => (
+      <div key={i} style={styles.projectCard}>
+        <div style={styles.projectHeader}>
+          <h3 style={{ margin: 0 }}>{exp.title} at {exp.company}</h3>
+          <button
+            style={styles.removeButton}
+            onClick={() => removeItem('Experience', i)}
+          >
+            Remove
+          </button>
+        </div>
+        <p style={{ margin: '4px 0', color: '#6b7280' }}>{exp.dates}</p>
+        <p style={{ margin: '8px 0', textAlign: 'justify' }}>{exp.description}</p>
+      </div>
+    ))
+  ) : (
+    <p style={{ fontStyle: 'italic', color: '#6b7280' }}>No experience listed</p>
+  )}
+</Section>
       {/* Add more sections like Experience, Education, etc. using same pattern */}
     </>
   );

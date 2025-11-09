@@ -1,10 +1,8 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// 1. Create the context
 const AuthContext = createContext();
 
-// 2. Hook that consumes it
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
@@ -13,13 +11,12 @@ export const useAuth = () => {
   return ctx;
 };
 
-// 3. Provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore from localStorage on first mount
+  // Restore from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('linkedinUser');
     if (saved) {
@@ -30,9 +27,21 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // LOGIN: Save full LinkedIn user including pictureUrl
   const login = (userData) => {
-    localStorage.setItem('linkedinUser', JSON.stringify(userData));
-    setUser(userData);
+    const fullUser = {
+      ...userData,
+      pictureUrl: userData.pictureUrl || null,
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      fullName: userData.fullName || '',
+      email: userData.email || '',
+      profileUrl: userData.profileUrl || '',
+      headline: userData.headline || '',
+    };
+
+    localStorage.setItem('linkedinUser', JSON.stringify(fullUser));
+    setUser(fullUser);
     setAccessToken(userData.accessToken);
   };
 
