@@ -720,20 +720,43 @@ src="http://localhost:4000/api/linkedin/avatar"
         </div>
           {/* Action Buttons */}
           <div style={styles.buttonGroup}>
-            <button
-              onClick={handleGeneratePortfolio}
-              style={styles.generatePortfolioButton}
-              disabled={localIsLoading}
-            >
-              {localIsLoading ? 'Generating...' : 'Generate Portfolio'}
-            </button>
-            <button
-              onClick={handlePDFGeneration}
-              style={{ ...styles.pdfButton, ...(localIsLoading ? styles.pdfButtonDisabled : {}) }}
-              disabled={localIsLoading}
-            >
-              {localIsLoading ? 'Generating...' : 'Download PDF'}
-            </button>
+           <button
+  onClick={handleGeneratePortfolio}
+  onMouseEnter={(e) => (e.target.style.background = "#b44dff")}
+  onMouseLeave={(e) => (e.target.style.background = "#9d00ff")}
+  style={{
+    background: "#9d00ff",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    padding: "10px 20px",
+    cursor: localIsLoading ? "not-allowed" : "pointer",
+    opacity: localIsLoading ? 0.6 : 1,
+    transition: "all 0.3s ease",
+  }}
+>
+  {localIsLoading ? "Generating..." : "Generate Portfolio"}
+</button>
+<button
+  onClick={handlePDFGeneration}
+  onMouseEnter={(e) => (e.target.style.background = "#b44dff")}
+  onMouseLeave={(e) => (e.target.style.background = "#9d00ff")}
+  style={{
+    background: "#9d00ff",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    padding: "10px 20px",
+    cursor: localIsLoading ? "not-allowed" : "pointer",
+    opacity: localIsLoading ? 0.6 : 1,
+    transition: "all 0.3s ease",
+  }}
+  disabled={localIsLoading}
+>
+  {localIsLoading ? "Generating..." : "Download PDF"}
+</button>
+
+
           </div>
         </div>
 
