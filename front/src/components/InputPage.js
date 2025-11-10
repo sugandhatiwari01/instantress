@@ -245,9 +245,14 @@ const InputPage = ({
             </select>
           </div>
 
-          <button type="submit" disabled={localIsLoading}>
-            {localIsLoading ? "Processing..." : "Generate Resume"}
-          </button>
+          <button
+  type="submit"
+  className="generate-btn"
+  disabled={localIsLoading}
+>
+  {localIsLoading ? "Processing..." : "Generate Resume"}
+</button>
+
         </form>
       </div>
     </div>
