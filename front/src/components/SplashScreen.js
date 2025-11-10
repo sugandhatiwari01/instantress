@@ -3,7 +3,6 @@ import React, { useCallback } from "react";
 import { Link, NavLink } from "react-router-dom";
 import Particles from "@tsparticles/react";
 import { loadSlim } from "@tsparticles/slim";
-import { TypeAnimation } from "react-type-animation";
 import "./SplashScreen.css";
 
 function SplashScreen() {
@@ -13,79 +12,77 @@ function SplashScreen() {
 
   const particlesOptions = {
     particles: {
-      number: { value: 80, density: { enable: true, value_area: 1000 } },
-      color: { value: "#9d00ff" }, // Neon purple particles
-      shape: { type: "circle" },
-      opacity: { value: 0.6, random: true },
-      size: { value: 4, random: true },
-      move: {
-        enable: true,
-        speed: 1.5,
-        direction: "none",
-        random: true,
-        out_mode: "out",
-      },
+      number: { value: 20 },
+      color: { value: "#a67c52" },
+      opacity: { value: 0.15 },
+      size: { value: 3, random: true },
+      move: { enable: true, speed: 0.4, random: true },
       links: {
         enable: true,
-        distance: 120,
-        color: "#ff007a", // Neon pink links
-        opacity: 0.5,
-        width: 1,
-      },
-    },
-    interactivity: {
-      events: {
-        onhover: { enable: true, mode: "connect" },
-        onclick: { enable: true, mode: "push" },
-      },
-      modes: {
-        connect: { distance: 100 },
-        push: { quantity: 3 },
+        distance: 130,
+        color: "#a67c52",
+        opacity: 0.1,
+        width: 0.5,
       },
     },
     detectRetina: true,
   };
 
   return (
-    <div className="splash-container">
+    <div className="splash-root">
       <Particles id="tsparticles" init={particlesInit} options={particlesOptions} />
-      <nav className="splash-nav">
-        <ul className="nav-links">
-          <li><NavLink to="/" end className={({ isActive }) => isActive ? "nav-active" : ""}>Home</NavLink></li>
-          <li><NavLink to="/about" className={({ isActive }) => isActive ? "nav-active" : ""}>About</NavLink></li>
-          <li><NavLink to="/contact" className={({ isActive }) => isActive ? "nav-active" : ""}>Contact</NavLink></li>
-        </ul>
-      </nav>
-      <div className="splash-content">
-        <TypeAnimation
-          sequence={[
-            "Welcome to Instant Resume & Portfolio Generator",
-            1000,
-            "Craft Professional Resumes with AI",
-            1000,
-            "Showcase Your Portfolio in Style",
-            1000,
-          ]}
-          wrapper="h1"
-          speed={50}
-          className="splash-title"
-          repeat={Infinity}
-        />
-        <p className="splash-subtitle">
-          Powered by AI - Create stunning resumes and portfolios with a neon touch!
-        </p>
-        <Link to="/input" className="splash-btn">Get Started</Link>
-      </div>
-      <footer className="splash-footer">
-        <p>Connect with us:</p>
-        <div className="social-links">
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-            <i className="fab fa-github"></i>
-          </a>
-          <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-            <i className="fab fa-linkedin"></i>
+
+      {/* Header */}
+      <header className="main-header">
+        <div className="brand">ResumeAI</div>
+        <div className="nav-buttons">
+          <NavLink to="/input" className="nav-btn brown-btn">🏗 Build Resume</NavLink>
+          <NavLink to="/about" className="nav-btn light-btn">📖 About</NavLink>
+          <a
+            href="https://www.linkedin.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-btn outline-btn"
+          >
+            🔗 Sign in with LinkedIn
           </a>
         </div>
+      </header>
+
+      {/* Hero Section */}
+      <main className="hero-wrapper">
+        <div className="hero-content">
+          <h1 className="hero-title">
+            Build Your Future With  
+            <span className="highlight"> Elegant Simplicity</span>
+          </h1>
+          <p className="hero-subtext">
+            Create resumes and portfolios that feel personal and polished — designed to tell your story with timeless beauty.
+          </p>
+          <div className="hero-actions">
+            <Link to="/input" className="btn-primary">Get Started</Link>
+            <Link to="/about" className="btn-outline">Learn More</Link>
+          </div>
+        </div>
+
+        <div className="hero-image">
+          <div className="card">
+            <h3>Timeless Design</h3>
+            <p>Layouts that highlight your strengths effortlessly.</p>
+          </div>
+          <div className="card card-secondary">
+            <h3>Portfolio Ready</h3>
+            <p>Showcase your work with grace and clarity.</p>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="footer">
+        <p>📧 Contact Us</p>
+        <a href="mailto:contact.resumeai@gmail.com" className="mail-link">
+          contact.resumeai@gmail.com
+        </a>
       </footer>
     </div>
   );

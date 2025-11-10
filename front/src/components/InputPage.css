@@ -1,57 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Open+Sans:wght@400;600&display=swap');
+
+/* Fullscreen layout */
+.input-wrapper {
+  min-height: 100vh;
+  background: #f9f6f2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 60px 20px;
+}
+
+/* Page box */
 .input-page {
-  padding: 20px;
-  max-width: 500px;
-  margin: 0 auto;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
+  width: 100%;
+  max-width: 650px;
+  background: #ffffff;
+  padding: 50px 40px 70px;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(58, 46, 37, 0.15);
+  font-family: "Open Sans", sans-serif;
+  color: #3e2f23;
+  overflow: visible;
 }
 
-.input-page h1 {
-  color: #9d00ff;
+/* Title + subtitle */
+.input-title {
+  font-family: "Lora", serif;
+  font-size: 36px;
+  color: #7a5836;
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
+.input-subtitle {
+  text-align: center;
+  color: #6b5743;
+  font-size: 16px;
+  margin-bottom: 35px;
+}
+
+/* Form groups */
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 25px;
 }
 
 .form-group label {
   display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
+  font-weight: 600;
+  color: #3e2f23;
+  margin-bottom: 8px;
+}
+
+.form-group label span {
+  color: #a67c52;
 }
 
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 12px;
+  font-size: 15px;
+  border: 1px solid #c6a97f;
+  border-radius: 8px;
+  color: #3e2f23;
+  background-color: #fdfcf9;
+  transition: all 0.3s ease;
 }
 
+.form-group input::placeholder {
+  color: #a67c52;
+  opacity: 0.8;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #a67c52;
+  outline: none;
+  box-shadow: 0 0 6px rgba(166, 124, 82, 0.3);
+}
+
+/* Button */
 button {
-  background: #9d00ff;
-  color: #fff;
+  background: linear-gradient(135deg, #8a5a33, #b48a60);
+  color: #3e2f23;
   border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
+  border-radius: 40px;
+  padding: 15px 30px;
   width: 100%;
-}
-
-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
+  font-weight: 600;
+  font-size: 17px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 40px;
+  box-shadow: 0 6px 18px rgba(138, 90, 51, 0.3);
 }
 
 button:hover:not(:disabled) {
-  background: #7b00cc;
+  background: linear-gradient(135deg, #704a28, #a17348);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(112, 74, 40, 0.4);
 }
 
+/* LinkedIn Button */
+.linkedin-login button,
+.linkedin-login .linkedin-btn {
+  background: linear-gradient(135deg, #0a66c2, #004182) !important;
+  color: #fff !important;
+  border-radius: 40px;
+  padding: 13px 20px;
+  font-weight: 600;
+  font-size: 15px;
+  margin-top: 15px;
+  width: 100%;
+  border: none;
+  box-shadow: 0 4px 10px rgba(10, 102, 194, 0.3);
+  transition: all 0.3s ease;
+}
+
+.linkedin-login button:hover,
+.linkedin-login .linkedin-btn:hover {
+  background: linear-gradient(135deg, #004182, #0a66c2) !important;
+  transform: translateY(-2px);
+}
+
+/* Messages */
 .error {
-  color: #ff4d4d;
-  margin-bottom: 10px;
+  color: #b94a4a;
+  font-weight: 600;
   text-align: center;
+  margin-bottom: 12px;
+}
+
+.loading {
+  text-align: center;
+  font-style: italic;
+  color: #7a5836;
+}
+
+.success-msg {
+  color: #4a7a52;
+  font-size: 14px;
+  margin-top: 6px;
 }

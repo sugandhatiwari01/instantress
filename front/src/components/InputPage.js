@@ -1,84 +1,91 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import LinkedInLogin from './LinkedInLogin';
-import './InputPage.css';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import LinkedInLogin from "./LinkedInLogin";
+import "./InputPage.css";
 
-const InputPage = ({ setData, setAiOverview, setError, setIsLoading, setSelectedTemplate }) => {
+const InputPage = ({
+  setData,
+  setAiOverview,
+  setError,
+  setIsLoading,
+  setSelectedTemplate,
+}) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    githubUsername: '',
-    leetcodeUser: '',
-    linkedinUrl: '',
-    template: 'ATS-friendly',
+    githubUsername: "",
+    leetcodeUser: "",
+    linkedinUrl: "",
+    template: "ATS-friendly",
     contactInfo: {
-      email: '',
-      mobile: '',
-      linkedin: ''
-    }
+      email: "",
+      mobile: "",
+      linkedin: "",
+    },
   });
-  const [localError, setLocalError] = useState('');
+  const [localError, setLocalError] = useState("");
   const [localIsLoading, setLocalIsLoading] = useState(false);
   const [linkedInProfile, setLinkedInProfile] = useState(null);
   const [publicPreview, setPublicPreview] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Check OAuth session on mount
-useEffect(() => {
-  const fetchLinkedInProfile = async () => {
-    try {
-      const response = await axios.get('http://localhost:4000/api/linkedin/profile', {
-        withCredentials: true
-      });
-      console.log('✅ LinkedIn session active:', response.data);
-      setLinkedInProfile(response.data);
-      setFormData(prev => ({
-        ...prev,
-        contactInfo: {
-          ...prev.contactInfo,
-          linkedin: `https://www.linkedin.com/in/${response.data.vanityName || response.data.sub || ''}`,
-          email: response.data.email || prev.contactInfo.email,
+  useEffect(() => {
+    const fetchLinkedInProfile = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:4000/api/linkedin/profile",
+          { withCredentials: true }
+        );
+        setLinkedInProfile(response.data);
+        setFormData((prev) => ({
+          ...prev,
+          contactInfo: {
+            ...prev.contactInfo,
+            linkedin: `https://www.linkedin.com/in/${
+              response.data.vanityName || response.data.sub || ""
+            }`,
+            email: response.data.email || prev.contactInfo.email,
+          },
+        }));
+      } catch (error) {
+        if (error.response?.status !== 401) {
+          console.error("Profile fetch error:", error);
         }
-      }));
-    } catch (error) {
-      if (error.response?.status === 401) {
-        console.log('No LinkedIn session - click "Sign in" to login');
-      } else {
-        console.error('Profile fetch error:', error);
       }
-    }
-  };
-  fetchLinkedInProfile();
-}, []);
+    };
+    fetchLinkedInProfile();
+  }, []);
 
-  // Fetch public LinkedIn preview when URL changes
-useEffect(() => {
-  const url = formData.contactInfo.linkedin.trim();
-  if (!url || !url.includes('linkedin.com/in/')) {
-    setPublicPreview(null);
-    return;
-  }
-
-  const timer = setTimeout(async () => {
-    try {
-const res = await axios.post('http://localhost:4000/api/linkedin/public', { url });      setPublicPreview(res.data);
-      setShowPreview(true);
-    } catch (err) {
-      console.log('Public preview failed (normal for private profiles)');
+  useEffect(() => {
+    const url = formData.contactInfo.linkedin.trim();
+    if (!url || !url.includes("linkedin.com/in/")) {
       setPublicPreview(null);
+      return;
     }
-  }, 800);
 
-  return () => clearTimeout(timer);
-}, [formData.contactInfo.linkedin]);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await axios.post(
+          "http://localhost:4000/api/linkedin/public",
+          { url }
+        );
+        setPublicPreview(res.data);
+        setShowPreview(true);
+      } catch {
+        setPublicPreview(null);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [formData.contactInfo.linkedin]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name.includes('contactInfo.')) {
-      const field = name.split('.')[1];
+    if (name.includes("contactInfo.")) {
+      const field = name.split(".")[1];
       setFormData({
         ...formData,
-        contactInfo: { ...formData.contactInfo, [field]: value }
+        contactInfo: { ...formData.contactInfo, [field]: value },
       });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -90,126 +97,120 @@ const res = await axios.post('http://localhost:4000/api/linkedin/public', { url 
     setSelectedTemplate(e.target.value);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!formData.githubUsername) {
-    setLocalError('GitHub Username is required');
-    setError('GitHub Username is required');
-    return;
-  }
-
-  setLocalIsLoading(true);
-  setIsLoading(true);
-  setLocalError('');
-  setError('');
-
-  try {
-    const response = await axios.post('http://localhost:4000/api/process-data', {
-      ...formData,
-      linkedinUrl: formData.contactInfo.linkedin,
-    }, { withCredentials: true });  // Add this!
-
-
-  let leetcodeData = null;
-    if (formData.leetcodeUser) {
-      try {
-        const lcResponse = await axios.post('http://localhost:4000/api/leetcode', {
-          username: formData.leetcodeUser,
-        });
-        leetcodeData = lcResponse.data;
-        console.log("✅ LeetCode frontend received:", leetcodeData);
-      } catch (err) {
-        console.warn("⚠️ LeetCode fetch failed:", err.message);
-      }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.githubUsername) {
+      setLocalError("GitHub username is required.");
+      setError("GitHub username is required.");
+      return;
     }
 
-    const finalData = { ...response.data, leetcodeData };
-setData(finalData);
+    setLocalIsLoading(true);
+    setIsLoading(true);
+    setLocalError("");
+    setError("");
 
-    setAiOverview(response.data.summary || '');
-    navigate('/results');
-  } catch (err) {
-    const errorMessage = err.response?.data?.error || 'Failed to process data';
-    setLocalError(errorMessage);
-    setError(errorMessage);
-  } finally {
-    setLocalIsLoading(false);
-    setIsLoading(false);
-  }
-};
+    try {
+      const response = await axios.post(
+        "http://localhost:4000/api/process-data",
+        {
+          ...formData,
+          linkedinUrl: formData.contactInfo.linkedin,
+        },
+        { withCredentials: true }
+      );
+
+      let leetcodeData = null;
+      if (formData.leetcodeUser) {
+        try {
+          const lcResponse = await axios.post(
+            "http://localhost:4000/api/leetcode",
+            { username: formData.leetcodeUser }
+          );
+          leetcodeData = lcResponse.data;
+        } catch (err) {
+          console.warn("LeetCode fetch failed:", err.message);
+        }
+      }
+
+      const finalData = { ...response.data, leetcodeData };
+      setData(finalData);
+      setAiOverview(response.data.summary || "");
+      navigate("/results");
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.error || "Failed to process data.";
+      setLocalError(errorMessage);
+      setError(errorMessage);
+    } finally {
+      setLocalIsLoading(false);
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="input-page">
-      <h1>Start Your Resume</h1>
-      {localError && <p className="error">{localError}</p>}
-      {localIsLoading && <p>Loading...</p>}
+    <div className="input-wrapper">
+      <div className="input-page">
+        <h1 className="input-title">Start Your Journey</h1>
+        <p className="input-subtitle">
+          Fill in your details below to create a beautiful and professional resume.
+        </p>
 
-      {/* Public Preview Modal */}
-      {showPreview && publicPreview && (
-        <div className="preview-modal" onClick={() => setShowPreview(false)}>
-          <div className="preview-card" onClick={e => e.stopPropagation()}>
-            <img src={publicPreview.image} alt="Profile" />
-            <h3>{publicPreview.name}</h3>
-            <p>{publicPreview.headline}</p>
-            {publicPreview.worksFor?.[0] && (
-              <p><strong>{publicPreview.worksFor[0].jobTitle}</strong> at {publicPreview.worksFor[0].company}</p>
-            )}
-            <div className="preview-actions">
-              <button onClick={() => setShowPreview(false)}>Close</button>
-              {!linkedInProfile && <LinkedInLogin text="Sign in for full data" />}
-            </div>
+        {localError && <p className="error">{localError}</p>}
+        {localIsLoading && (
+          <p className="loading">Processing your information...</p>
+        )}
+
+        <form onSubmit={handleSubmit} className="input-form">
+          <div className="form-group">
+            <label>
+              GitHub Username <span>*</span>
+            </label>
+            <input
+              type="text"
+              name="githubUsername"
+              value={formData.githubUsername}
+              onChange={handleInputChange}
+              placeholder="Enter your GitHub username"
+              required
+            />
           </div>
-        </div>
-      )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>GitHub Username:</label>
-          <input
-            type="text"
-            name="githubUsername"
-            value={formData.githubUsername}
-            onChange={handleInputChange}
-            placeholder="e.g., octocat"
-            required
-          />
-        </div>
+          <div className="form-group">
+            <label>LeetCode Username</label>
+            <input
+              type="text"
+              name="leetcodeUser"
+              value={formData.leetcodeUser}
+              onChange={handleInputChange}
+              placeholder="Optional - your LeetCode username"
+            />
+          </div>
 
-        <div className="form-group">
-          <label>LeetCode Username (Optional):</label>
-          <input
-            type="text"
-            name="leetcodeUser"
-            value={formData.leetcodeUser}
-            onChange={handleInputChange}
-            placeholder="e.g., your-leetcode-username"
-          />
-        </div>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              name="contactInfo.email"
+              value={formData.contactInfo.email}
+              onChange={handleInputChange}
+              placeholder="you@example.com"
+            />
+          </div>
 
-        <div className="form-group">
-          <label>Email:</label>
-          <input
-            type="email"
-            name="contactInfo.email"
-            value={formData.contactInfo.email}
-            onChange={handleInputChange}
-            placeholder="e.g., user@example.com"
-          />
-        </div>
+          <div className="form-group">
+            <label>Mobile</label>
+            <input
+              type="text"
+              name="contactInfo.mobile"
+              value={formData.contactInfo.mobile}
+              onChange={handleInputChange}
+              placeholder="e.g., +91 9876543210"
+            />
+          </div>
 
-        <div className="form-group">
-          <label>Mobile:</label>
-          <input
-            type="text"
-            name="contactInfo.mobile"
-            value={formData.contactInfo.mobile}
-            onChange={handleInputChange}
-            placeholder="e.g., +91 1234567890"
-          />
-        </div>
-
-        <div className="form-group">
-          <label>LinkedIn (Optional):</label>
-          <div className="linkedin-input-group">
+          <div className="form-group">
+            <label>LinkedIn Profile</label>
             <input
               type="url"
               name="contactInfo.linkedin"
@@ -217,39 +218,38 @@ setData(finalData);
               onChange={handleInputChange}
               placeholder="https://linkedin.com/in/username"
             />
-            {publicPreview && (
-              <span className="preview-hint">
-                👤 {publicPreview.name.split(' ')[0]}'s profile detected
-              </span>
+
+            {!linkedInProfile && (
+              <div className="linkedin-login">
+                <LinkedInLogin text="Sign in with LinkedIn to auto-fill" />
+              </div>
+            )}
+            {linkedInProfile && (
+              <p className="success-msg">
+                ✅ Signed in as {linkedInProfile.firstName}{" "}
+                {linkedInProfile.lastName}
+              </p>
             )}
           </div>
-          {!linkedInProfile && (
-            <div style={{ marginTop: '8px' }}>
-              <LinkedInLogin text="Sign in with LinkedIn to auto-fill" />
-            </div>
-          )}
-          {linkedInProfile && (
-            <p style={{ color: 'green', fontSize: '0.9em', marginTop: '8px' }}>
-              ✅ Signed in as {linkedInProfile.firstName} {linkedInProfile.lastName}
-            </p>
-          )}
-        </div>
 
-        <div className="form-group">
-          <label>Template:</label>
-          <select name="template" value={formData.template} onChange={handleTemplateChange}>
-            <option value="Minimal">Minimal</option>
-            <option value="ATS-friendly">ATS-friendly</option>
-            <option value="Modern">Modern</option>
-          </select>
-        </div>
+          <div className="form-group">
+            <label>Resume Template</label>
+            <select
+              name="template"
+              value={formData.template}
+              onChange={handleTemplateChange}
+            >
+              <option value="Minimal">Minimal</option>
+              <option value="ATS-friendly">ATS Friendly</option>
+              <option value="Modern">Modern</option>
+            </select>
+          </div>
 
-        <button type="submit" disabled={localIsLoading}>
-          {localIsLoading ? 'Processing...' : 'Fetch Data and Edit Resume'}
-        </button>
-      </form>
-
-      
+          <button type="submit" disabled={localIsLoading}>
+            {localIsLoading ? "Processing..." : "Generate Resume"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

@@ -1,0 +1,64 @@
+/* src/components/About.css */
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Open+Sans:wght@400;600&display=swap');
+
+.about-container {
+  min-height: 100vh;
+  width: 100%;
+  background: #f9f6f2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 80px 20px;
+  box-sizing: border-box;
+}
+
+.about-content {
+  max-width: 800px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(58, 46, 37, 0.1);
+  padding: 60px 50px;
+  text-align: center;
+  animation: fadeIn 1s ease-in-out;
+}
+
+.about-title {
+  font-family: "Lora", serif;
+  color: #7a5836;
+  font-size: 40px;
+  margin-bottom: 25px;
+  letter-spacing: 1px;
+}
+
+.about-text {
+  font-family: "Open Sans", sans-serif;
+  color: #3e2f23;
+  font-size: 17px;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+
+.about-btn {
+  display: inline-block;
+  margin-top: 25px;
+  padding: 12px 28px;
+  font-family: "Open Sans", sans-serif;
+  font-weight: 600;
+  background: #a67c52;
+  color: #fff;
+  border-radius: 30px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(166, 124, 82, 0.2);
+}
+
+.about-btn:hover {
+  background: #7a5836;
+  transform: translateY(-3px);
+}
+
+/* Smooth appearance */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
