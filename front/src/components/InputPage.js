@@ -233,17 +233,25 @@ const InputPage = ({
           </div>
 
           <div className="form-group">
-            <label>Resume Template</label>
-            <select
-              name="template"
-              value={formData.template}
-              onChange={handleTemplateChange}
-            >
-              <option value="Minimal">Minimal</option>
-              <option value="ATS-friendly">ATS Friendly</option>
-              <option value="Modern">Modern</option>
-            </select>
-          </div>
+  <label>Resume Template</label>
+  <select
+    name="template"
+    value={formData.template}
+    onChange={handleTemplateChange}
+  >
+    <option value="ATS-friendly">ATS Friendly</option>
+    <option value="Creative">Creative</option>
+    <option value="Minimal">Minimal</option>
+    <option value="Modern">Modern</option>
+    <option value="Sidebar">Sidebar</option>   {/* NEW TEMPLATE */}
+  </select>
+
+  <small style={{ color: "#7a5836" }}>
+    Choose how your resume will look.
+  </small>
+</div>
+
+
 
           <button
   type="submit"

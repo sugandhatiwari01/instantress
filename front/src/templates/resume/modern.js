@@ -1,4 +1,4 @@
-module.exports = function modernTemplate(data) {
+export default function atsTemplate(data) {
   const {
     githubUsername,
     summary,

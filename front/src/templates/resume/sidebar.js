@@ -1,4 +1,4 @@
-module.exports = function sidebarTemplate(data) {
+export default function atsTemplate(data) {
   const {
     githubUsername,
     summary,
