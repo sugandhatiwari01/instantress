@@ -1,155 +1,183 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
+// ── ATS-Safe, Minimal & Sleek Styles ─────────────────────────────────────
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    paddingTop: 55,
+    paddingBottom: 55,
+    paddingHorizontal: 60,
     fontFamily: 'Helvetica',
-    backgroundColor: '#FFFFFF'
+    fontSize: 11,
+    lineHeight: 1.5,
+    color: '#000000',
   },
-  section: {
-    marginBottom: 15,
-    paddingBottom: 10
+
+  // ── Header ──
+  name: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 28,
+    marginBottom: 6,
+    textAlign: 'center',
+    color: '#000000',
   },
-  heading: {
-    fontSize: 24,
-    marginBottom: 15,
-    fontWeight: 'bold',
-    color: '#2C3E50',
+  contact: {
+    fontSize: 10,
+    textAlign: 'center',
+    marginBottom: 16,
+    color: '#333333',
+  },
+
+  // ── Section Titles ──
+  sectionTitle: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 12,
+    marginTop: 12,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    textAlign: 'center'
+    letterSpacing: 1.2,
+    color: '#000000',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000000',
+    paddingBottom: 2,
   },
-  subheading: {
-    fontSize: 16,
-    marginBottom: 10,
-    fontWeight: 'bold',
-    color: '#34495E',
-    textTransform: 'uppercase'
-  },
+
+  // ── Body Text ──
   text: {
     fontSize: 11,
-    lineHeight: 1.6,
-    color: '#2C3E50',
-    marginBottom: 3
-  },
-  projectTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
     marginBottom: 2,
-    color: '#2980B9'
   },
-  projectContainer: {
-    marginBottom: 10,
-    paddingBottom: 5,
+  bold: {
+    fontFamily: 'Helvetica-Bold',
   },
-  technologies: {
-    fontSize: 10,
-    color: '#666666',
-    marginBottom: 4
-  },
-  projectDescription: {
+
+  // ── Lists (Skills, Certifications) ──
+  listItem: {
     fontSize: 11,
-    color: '#2C3E50',
-    marginLeft: 10
-  }
+    marginLeft: 12,
+    marginBottom: 1,
+  },
+
+  // ── Project / Experience Entry ──
+  entry: {
+    marginBottom: 10,
+  },
+  entryTitle: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 11,
+    marginBottom: 1,
+  },
+  entryMeta: {
+    fontSize: 10,
+    color: '#444444',
+    marginBottom: 2,
+  },
+  bullet: {
+    marginLeft: 12,
+    fontSize: 11,
+    marginBottom: 2,
+  },
 });
 
-const ResumePDF = ({ data }) => {
-  // Helper function to format content
-  const formatContent = (content) => {
-    if (!content) return '';
-    if (typeof content === 'string') return content;
-    if (content.items && Array.isArray(content.items)) {
-      return content.items.join(', ');
-    }
-    return content.content || '';
-  };
-
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.section}>
-          <Text style={styles.heading}>{data.name || 'Resume'}</Text>
-          {data.contactInfo && (
-            <Text style={styles.text}>
-              {data.contactInfo.email && `Email: ${data.contactInfo.email}\n`}
-              {data.contactInfo.phone && `Phone: ${data.contactInfo.phone}\n`}
-              {data.contactInfo.location && `Location: ${data.contactInfo.location}`}
-            </Text>
-          )}
-        </View>
-
-        {/* Summary */}
-        {data.summary && (
-          <View style={styles.section}>
-            <Text style={styles.subheading}>Professional Summary</Text>
-            <Text style={styles.text}>{formatContent(data.summary)}</Text>
-          </View>
-        )}
-
-        {/* Skills */}
-        {data.skills && data.skills.items && data.skills.items.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.subheading}>Skills</Text>
-            <Text style={styles.text}>{data.skills.items.join(', ')}</Text>
-          </View>
-        )}
-
-        {/* Projects */}
-        {data.projects && data.projects.items && data.projects.items.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.subheading}>Projects</Text>
-            {data.projects.items.map((project, index) => (
-              <View key={index} style={{ marginBottom: 8 }}>
-                <Text style={[styles.text, { fontWeight: 'bold' }]}>
-                  {project.name}
-                  {project.stars ? ` (${project.stars} ★)` : ''}
-                </Text>
-                {project.technologies && project.technologies.length > 0 && (
-                  <Text style={[styles.text, { color: '#666666', fontSize: 10, marginTop: 2, marginBottom: 3 }]}>
-                    Technologies: {project.technologies.join(' • ')}
-                  </Text>
-                )}
-                {project.description && project.description.split('\n').map((line, i) => (
-                  <Text key={i} style={styles.text}>{line}</Text>
-                ))}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Experience */}
-        {data.experience && data.experience.items && data.experience.items.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.subheading}>Experience</Text>
-            {data.experience.items.map((exp, index) => (
-              <View key={index} style={{ marginBottom: 5 }}>
-                <Text style={[styles.text, { fontWeight: 'bold' }]}>{exp.title}</Text>
-                <Text style={styles.text}>{exp.description}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Education */}
-        {data.education && (
-          <View style={styles.section}>
-            <Text style={styles.subheading}>Education</Text>
-            <Text style={styles.text}>{formatContent(data.education)}</Text>
-          </View>
-        )}
-
-        {/* Certifications */}
-        {data.certifications && data.certifications.items && data.certifications.items.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.subheading}>Certifications</Text>
-            <Text style={styles.text}>{data.certifications.items.join(', ')}</Text>
-          </View>
-        )}
-      </Page>
-    </Document>
-  );
+// ── Helper: Join array or fallback ───────────────────────────────────────
+const format = (val) => {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (Array.isArray(val)) return val.join(' • ');
+  return val.content || '';
 };
+
+const ResumePDF = ({ data }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      {/* ── Header ── */}
+      <View>
+        <Text style={styles.name}>{data.name || 'Your Name'}</Text>
+        <Text style={styles.contact}>
+          {[
+            data.contactInfo?.email,
+            data.contactInfo?.phone,
+            data.contactInfo?.location,
+            data.contactInfo?.linkedin,
+            data.contactInfo?.github,
+          ]
+            .filter(Boolean)
+            .join('  |  ')}
+        </Text>
+      </View>
+
+      {/* ── Professional Summary ── */}
+      {data.summary && (
+        <View>
+          <Text style={styles.sectionTitle}>Summary</Text>
+          <Text style={styles.text}>{format(data.summary)}</Text>
+        </View>
+      )}
+
+      {/* ── Skills ── */}
+      {data.skills?.items?.length > 0 && (
+        <View>
+          <Text style={styles.sectionTitle}>Skills</Text>
+          <Text style={styles.text}>{data.skills.items.join(' • ')}</Text>
+        </View>
+      )}
+
+      {/* ── Projects ── */}
+      {data.projects?.items?.length > 0 && (
+        <View>
+          <Text style={styles.sectionTitle}>Projects</Text>
+          {data.projects.items.map((p, i) => (
+            <View key={i} style={styles.entry}>
+              <Text style={styles.entryTitle}>
+                {p.name}
+                {p.stars ? ` (${p.stars}★)` : ''}
+              </Text>
+              {p.technologies?.length > 0 && (
+                <Text style={styles.entryMeta}>
+                  {p.technologies.join(' • ')}
+                </Text>
+              )}
+              {p.description?.split('\n').map((line, idx) => (
+                <Text key={idx} style={styles.bullet}>• {line.trim()}</Text>
+              ))}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* ── Experience ── */}
+      {data.experience?.items?.length > 0 && (
+        <View>
+          <Text style={styles.sectionTitle}>Experience</Text>
+          {data.experience.items.map((e, i) => (
+            <View key={i} style={styles.entry}>
+              <Text style={styles.entryTitle}>{e.title}</Text>
+              {e.company && <Text style={styles.entryMeta}>{e.company} | {e.duration}</Text>}
+              {e.description?.split('\n').map((line, idx) => (
+                <Text key={idx} style={styles.bullet}>• {line.trim()}</Text>
+              ))}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* ── Education ── */}
+      {data.education && (
+        <View>
+          <Text style={styles.sectionTitle}>Education</Text>
+          <Text style={styles.text}>{format(data.education)}</Text>
+        </View>
+      )}
+
+      {/* ── Certifications ── */}
+      {data.certifications?.items?.length > 0 && (
+        <View>
+          <Text style={styles.sectionTitle}>Certifications</Text>
+          <Text style={styles.text}>{data.certifications.items.join(' • ')}</Text>
+        </View>
+      )}
+    </Page>
+  </Document>
+);
 
 export default ResumePDF;
