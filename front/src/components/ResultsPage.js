@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { handleDownloadAndOpenPDF } from "./handleDownloadAndOpenPDF";
 import ResumePDF from "./ResumePDF";
+import { generateRealPDF } from "./ResumePDF";
 import { useAuth } from "../context/AuthContext";
-
 /* ---------- TEMPLATE IMPORTS ---------- */
 import atsTemplate from "../templates/resume/ats";
 import creativeTemplate from "../templates/resume/creative";
@@ -17,12 +17,30 @@ import glassTemplate from "../templates/portfolio/glass";
 import gridTemplate from "../templates/portfolio/grid";
 import minimalPortfolioTemplate from "../templates/portfolio/minimal";
 
+/* ---------- RESUME TEMPLATES ---------- */
 const RESUME_TEMPLATES = {
-  "ATS-friendly": atsTemplate,
-  Creative: creativeTemplate,
-  Minimal: minimalTemplate,
-  Modern: modernTemplate,
-  Sidebar: sidebarTemplate,
+  ats: atsTemplate,
+  creative: creativeTemplate,
+  minimal: minimalTemplate,
+  modern: modernTemplate,
+  sidebar: sidebarTemplate,
+};
+
+/* ---------- TEMPLATE OPTIONS ---------- */
+const RESUME_TEMPLATE_OPTIONS = [
+  { value: "ats",      label: "ATS Friendly" },
+  { value: "creative", label: "Creative" },
+  { value: "minimal",  label: "Minimal" },
+  { value: "modern",   label: "Modern" },
+  { value: "sidebar",  label: "Sidebar" },
+];
+
+const TEMPLATE_NAME_MAP = {
+  "ATS-friendly": "ats",
+  Creative: "creative",
+  Minimal: "minimal",
+  Modern: "modern",
+  Sidebar: "sidebar",
 };
 
 const PORTFOLIO_TEMPLATES = {
@@ -32,7 +50,7 @@ const PORTFOLIO_TEMPLATES = {
   "Minimal Clean": minimalPortfolioTemplate,
 };
 
-/* ---------- STYLES (merged) ---------- */
+/* ---------- STYLES (only for UI controls) ---------- */
 const styles = {
   container: { minHeight: "100vh", background: "linear-gradient(135deg,#f5f3ff,#ede9fe)", padding: "32px 16px" },
   content: { maxWidth: 1200, margin: "0 auto" },
@@ -42,11 +60,9 @@ const styles = {
   tabBtn: { padding: "10px 20px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 },
   activeTab: { background: "#4f46e5", color: "#fff" },
 
-  /* Header */
+  /* Header (controls only) */
   headerCard: { background: "#fff", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,.1)", padding: 32, marginBottom: 24 },
-  headerTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" },
-  name: { fontSize: 36, fontWeight: "bold", margin: 0, color: "#111827" },
-  headline: { margin: "8px 0 0", color: "#6b7280" },
+  headerTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" },
   buttonGroup: { display: "flex", gap: 12, alignItems: "center" },
 
   /* Buttons */
@@ -54,30 +70,6 @@ const styles = {
   generateBtn: { background: "linear-gradient(135deg,#4f46e5,#9333ea)", color: "#fff" },
   pdfBtn: { background: "linear-gradient(135deg,#9333ea,#3b82f6)", color: "#fff" },
   editBtn: { background: "#7a5836", color: "#fff" },
-  cancelBtn: { background: "#c9c0b1", color: "#fff" },
-
-  /* Contact */
-  contactGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 16, paddingTop: 24, borderTop: "1px solid #e5e7eb" },
-  contactItem: { display: "flex", alignItems: "center", gap: 8 },
-  contactIcon: { fontSize: 20 },
-  contactValue: { flex: 1, color: "#111827" },
-
-  /* Sections */
-  section: { background: "#fff", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,.1)", marginBottom: 24, overflow: "hidden" },
-  sectionHeader: { display: "flex", justifyContent: "space-between", padding: "24px", background: "transparent", border: "none", cursor: "pointer", width: "100%" },
-  sectionTitle: { display: "flex", alignItems: "center", gap: 12 },
-  sectionIcon: { fontSize: 24 },
-  sectionTitleText: { fontSize: 24, fontWeight: "bold", margin: 0, color: "#111827" },
-  sectionContent: { padding: "0 24px 24px" },
-
-  /* Project card */
-  projectCard: { border: "2px solid #e5e7eb", borderRadius: 12, padding: 16, marginBottom: 16 },
-  projectHeader: { display: "flex", justifyContent: "space-between", marginBottom: 8 },
-  projectName: { fontSize: 18, fontWeight: 600, color: "#000", textDecoration: "none" },
-  projectMeta: { display: "flex", alignItems: "center", gap: 16, marginTop: 8, paddingTop: 8, borderTop: "1px solid #e5e7eb" },
-  techBadge: { padding: "2px 8px", background: "#f3f4f6", borderRadius: 12, fontSize: 12 },
-  addBtn: { padding: "10px 16px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", marginBottom: 16 },
-  removeBtn: { marginTop: 12, padding: "4px 8px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 },
 
   /* Portfolio preview */
   portfolioContainer: { background: "#fff", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,.1)", padding: 24, marginBottom: 24 },
@@ -94,25 +86,11 @@ const styles = {
   spinner: { width: 48, height: 48, border: "4px solid #e5e7eb", borderTop: "4px solid #9333ea", borderRadius: "50%", animation: "spin 1s linear infinite", marginBottom: 16 },
   errorCard: { background: "#fff", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,.1)", padding: 32, maxWidth: 400, textAlign: "center" },
 
-  /* Editor panel (right side) */
+  /* Editor panel */
   editorBox: { width: 420, background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 6px 20px rgba(0,0,0,.08)" },
   input: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 8 },
   textareaEditor: { width: "100%", padding: 8, minHeight: 96, borderRadius: 6, border: "1px solid #ddd", marginBottom: 8 },
 };
-
-/* ---------- SECTION COMPONENT ---------- */
-const Section = ({ title, icon, expanded, onToggle, children }) => (
-  <div style={styles.section}>
-    <button onClick={onToggle} style={styles.sectionHeader}>
-      <div style={styles.sectionTitle}>
-        <span style={styles.sectionIcon}>{icon}</span>
-        <h2 style={styles.sectionTitleText}>{title}</h2>
-      </div>
-      <span>{expanded ? "Up" : "Down"}</span>
-    </button>
-    {expanded && <div style={styles.sectionContent}>{children}</div>}
-  </div>
-);
 
 /* ---------- MAIN COMPONENT ---------- */
 export default function ResultsPage({
@@ -130,14 +108,6 @@ export default function ResultsPage({
   const [activeTab, setActiveTab] = useState("resume");
   const [portfolioCode, setPortfolioCode] = useState("");
   const [resumeData, setResumeData] = useState({});
-  const [expandedSections, setExpandedSections] = useState({
-    summary: true,
-    skills: true,
-    projects: true,
-    experience: true,
-    education: true,
-    leetcode: true,
-  });
   const [localError, setLocalError] = useState(initialError);
   const [localLoading, setLocalLoading] = useState(initialIsLoading);
   const [templateName, setTemplateName] = useState(selectedTemplate);
@@ -159,15 +129,24 @@ export default function ResultsPage({
 
     const normalized = {
       githubUsername,
-      profilePictureUrl: fromBackend.linkedInProfile?.pictureUrl || user?.pictureUrl || user?.picture || null,
+      profilePictureUrl:
+        fromBackend.linkedInProfile?.pictureUrl ||
+        user?.pictureUrl ||
+        user?.picture ||
+        null,
       headline: fromBackend.headline || user?.headline || "Software Developer",
       contactInfo: {
-        email: fromBackend.contactInfo?.email || fromBackend.email || user?.email || "",
+        email:
+          fromBackend.contactInfo?.email ||
+          fromBackend.email ||
+          user?.email ||
+          "",
         mobile: fromBackend.contactInfo?.mobile || "",
         linkedin: fromBackend.contactInfo?.linkedin || user?.profileUrl || "",
       },
       summary: fromBackend.summary || aiOverview || "",
-      categorizedSkills: fromBackend.categorizedSkills || fromBackend.skillsSummary || {},
+      categorizedSkills:
+        fromBackend.categorizedSkills || fromBackend.skillsSummary || {},
       projects: {
         title: "Projects",
         items: (fromBackend.bestProjects || []).map(p => ({
@@ -180,7 +159,9 @@ export default function ResultsPage({
       },
       experience: {
         title: "Experience",
-        items: Array.isArray(fromBackend.workExperience) ? fromBackend.workExperience : [],
+        items: Array.isArray(fromBackend.workExperience)
+          ? fromBackend.workExperience
+          : [],
       },
       education: fromBackend.education || "",
       leetcodeData: fromBackend.leetcodeData || null,
@@ -190,6 +171,12 @@ export default function ResultsPage({
     setResumeData(normalized);
     setHasInitialized(true);
   }, [data, user, aiOverview, hasInitialized]);
+
+  /* ---------- SYNC PROP → INTERNAL KEY ---------- */
+  useEffect(() => {
+    const key = TEMPLATE_NAME_MAP[selectedTemplate] ?? "ats";
+    setTemplateName(key);
+  }, [selectedTemplate]);
 
   /* ---------- TEMPLATE RENDERERS ---------- */
   const renderResumeHTML = () => {
@@ -229,11 +216,12 @@ export default function ResultsPage({
     }
   };
 
-  /* ---------- EDITOR PANEL HELPERS ---------- */
+  /* ---------- EDITOR HELPERS ---------- */
   const addItem = (section) => {
-    const newItem = section === "projects"
-      ? { name: "New Project", html_url: "", description: "", technologies: [], stars: 0 }
-      : { title: "Job Title", company: "Company", dates: "", description: "" };
+    const newItem =
+      section === "projects"
+        ? { name: "New Project", html_url: "", description: "", technologies: [], stars: 0 }
+        : { title: "Job Title", company: "Company", dates: "", description: "" };
     setResumeData(prev => ({
       ...prev,
       [section]: { ...(prev[section] || { items: [] }), items: [...(prev[section]?.items || []), newItem] },
@@ -248,9 +236,6 @@ export default function ResultsPage({
     });
   };
 
-  const toggleSection = (sec) =>
-    setExpandedSections(prev => ({ ...prev, [sec]: !prev[sec] }));
-
   const beginPanelEdit = () => {
     originalRef.current = JSON.parse(JSON.stringify(resumeData));
     setShowEditorPanel(true);
@@ -261,7 +246,7 @@ export default function ResultsPage({
   };
   const savePanelEdit = () => setShowEditorPanel(false);
 
-  const parseSkills = (txt) => {
+  const parseSkills = txt => {
     const out = {};
     txt.split(";").forEach(p => {
       const [cat, rest] = p.split(":").map(s => s.trim());
@@ -289,19 +274,17 @@ export default function ResultsPage({
     });
   };
 
-  /* ---------- PDF & PORTFOLIO ---------- */
-  const handlePDF = async () => {
-    setLocalLoading(true);
-    try {
-      const pdfDoc = <ResumePDF data={resumeData} selectedTemplate={templateName} aiOverview={aiOverview} />;
-      await handleDownloadAndOpenPDF(pdfDoc);
-    } catch (e) {
-      setLocalError("PDF generation failed");
-    } finally {
-      setLocalLoading(false);
-    }
-  };
-
+const handlePDF = async () => {
+  setLocalLoading(true);
+  try {
+    await generateRealPDF(resumeData, templateName); // Pass data + template
+  } catch (e) {
+    console.error(e);
+    setLocalError("PDF generation failed");
+  } finally {
+    setLocalLoading(false);
+  }
+};
   const handleGeneratePortfolio = async () => {
     setLocalLoading(true);
     try {
@@ -398,10 +381,10 @@ export default function ResultsPage({
     </div>
   );
 
-  /* ---------- RESUME TAB ---------- */
+  /* ---------- RESUME TAB – ONLY THE TEMPLATE ---------- */
   const renderResumeTab = () => (
     <>
-      {/* Header */}
+      {/* Controls header */}
       <div style={styles.headerCard}>
         <div style={styles.headerTop}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -437,8 +420,10 @@ export default function ResultsPage({
               </div>
             )}
             <div>
-              <h1 style={styles.name}>{resumeData.githubUsername}</h1>
-              <p style={styles.headline}>{resumeData.headline}</p>
+              <h1 style={{ fontSize: 36, fontWeight: "bold", margin: 0, color: "#111827" }}>
+                {resumeData.githubUsername}
+              </h1>
+              <p style={{ margin: "8px 0 0", color: "#6b7280" }}>{resumeData.headline}</p>
             </div>
           </div>
 
@@ -446,128 +431,83 @@ export default function ResultsPage({
             <select
               value={templateName}
               onChange={e => setTemplateName(e.target.value)}
-              style={{ padding: "12px 16px", borderRadius: 8, border: "2px solid #b08968", background: "#fff", cursor: "pointer" }}
+              style={{
+                padding: "12px 16px",
+                borderRadius: 8,
+                border: "2px solid #b08968",
+                background: "#fff",
+                cursor: "pointer",
+              }}
             >
-              {Object.keys(RESUME_TEMPLATES).map(k => (
-                <option key={k} value={k}>{k}</option>
+              {RESUME_TEMPLATE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
 
-            <button style={{ ...styles.primaryBtn, ...styles.generateBtn }} onClick={handleGeneratePortfolio} disabled={localLoading}>
+            <button
+              style={{ ...styles.primaryBtn, ...styles.generateBtn }}
+              onClick={handleGeneratePortfolio}
+              disabled={localLoading}
+            >
               {localLoading ? "Generating…" : "Generate Portfolio"}
             </button>
 
-            <button style={{ ...styles.primaryBtn, ...styles.pdfBtn }} onClick={handlePDF} disabled={localLoading}>
+            <button
+              style={{ ...styles.primaryBtn, ...styles.pdfBtn }}
+              onClick={handlePDF}
+              disabled={localLoading}
+            >
               {localLoading ? "Generating…" : "Download PDF"}
             </button>
 
-            <button style={{ ...styles.primaryBtn, ...styles.editBtn }} onClick={showEditorPanel ? cancelPanelEdit : beginPanelEdit}>
+            <button
+              style={{ ...styles.primaryBtn, ...styles.editBtn }}
+              onClick={showEditorPanel ? cancelPanelEdit : beginPanelEdit}
+            >
               {showEditorPanel ? "Cancel Edit" : "Edit Resume"}
             </button>
             {showEditorPanel && (
-              <button style={{ ...styles.primaryBtn, ...styles.generateBtn }} onClick={savePanelEdit}>
+              <button
+                style={{ ...styles.primaryBtn, ...styles.generateBtn }}
+                onClick={savePanelEdit}
+              >
                 Save Edits
               </button>
             )}
           </div>
         </div>
-
-        {/* Contact */}
-        <div style={styles.contactGrid}>
-          {["email", "mobile", "linkedin"].map(f => (
-            <div key={f} style={styles.contactItem}>
-              <span style={styles.contactIcon}>{f === "email" ? "Email" : f === "mobile" ? "Phone" : "LinkedIn"}</span>
-              <span style={styles.contactValue}>{resumeData.contactInfo?.[f] || "—"}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* LeetCode */}
-        {resumeData.leetcodeData && (
-          <Section title="LeetCode Profile" icon="Puzzle" expanded={expandedSections.leetcode} onToggle={() => toggleSection("leetcode")}>
-            <p><strong>Username:</strong> {resumeData.leetcodeData.username}</p>
-            <p><strong>Rank:</strong> {resumeData.leetcodeData.rank}</p>
-            <h4>Languages Used:</h4>
-            <ul>
-              {resumeData.leetcodeData.languagesUsed?.length ? resumeData.leetcodeData.languagesUsed.map((l, i) => (
-                <li key={i}>{l.name} — {l.solved} solved</li>
-              )) : <li>No data</li>}
-            </ul>
-          </Section>
-        )}
       </div>
 
-      {/* Summary */}
-      <Section title="Summary" icon="Summary" expanded={expandedSections.summary} onToggle={() => toggleSection("summary")}>
-        <p style={{ margin: 0, lineHeight: 1.6 }}>{resumeData.summary || "No summary"}</p>
-      </Section>
-
-      {/* Skills */}
-      <Section title="Skills" icon="Skills" expanded={expandedSections.skills} onToggle={() => toggleSection("skills")}>
-        {Object.entries(resumeData.categorizedSkills || {}).length ? (
-          Object.entries(resumeData.categorizedSkills).map(([cat, list]) => (
-            <div key={cat} style={{ marginBottom: 12 }}>
-              <strong>{cat}:</strong>{" "}
-              <div style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
-                {(list).map((s, i) => (
-                  <span key={i} style={styles.techBadge}>{s}</span>
-                ))}
-              </div>
-            </div>
-          ))
-        ) : (
-          <p style={{ fontStyle: "italic", color: "#6b7280" }}>No skills listed</p>
-        )}
-      </Section>
-
-      {/* Projects */}
-      <Section title="Projects" icon="Projects" expanded={expandedSections.projects} onToggle={() => toggleSection("projects")}>
-        {resumeData.projects?.items?.length ? (
-          resumeData.projects.items.map((p, i) => (
-            <div key={i} style={styles.projectCard}>
-              <div style={styles.projectHeader}>
-                <a href={p.html_url} target="_blank" rel="noopener noreferrer" style={styles.projectName}>
-                  {p.name}
-                </a>
-              </div>
-              <p style={{ margin: "8px 0", lineHeight: 1.6 }}>{p.description || "—"}</p>
-              <div style={styles.projectMeta}>
-                <span>Stars: {p.stars || 0}</span>
-                {p.technologies?.length > 0 && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {p.technologies.map((t, idx) => (
-                      <span key={idx} style={styles.techBadge}>{t}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        ) : (
-          <p style={{ fontStyle: "italic", color: "#6b7280" }}>No projects</p>
-        )}
-      </Section>
-
-      {/* Experience */}
-      <Section title="Experience" icon="Experience" expanded={expandedSections.experience} onToggle={() => toggleSection("experience")}>
-        {resumeData.experience?.items?.length ? (
-          resumeData.experience.items.map((e, i) => (
-            <div key={i} style={styles.projectCard}>
-              <div style={styles.projectHeader}>
-                <h3 style={{ margin: 0 }}>{e.title} at {e.company}</h3>
-              </div>
-              <p style={{ margin: "4px 0", color: "#6b7280" }}>{e.dates}</p>
-              <p style={{ margin: "8px 0", lineHeight: 1.6 }}>{e.description}</p>
-            </div>
-          ))
-        ) : (
-          <p style={{ fontStyle: "italic", color: "#6b7280" }}>No experience listed</p>
-        )}
-      </Section>
+      {/* THE REAL RESUME – full HTML from the chosen template */}
+      <div style={{ marginTop: 32 }}>
+        <h2 style={{ fontSize: 24, fontWeight: "bold", margin: "0 0 16px", color: "#111827" }}>
+          Resume Preview
+        </h2>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            boxShadow: "0 10px 30px rgba(0,0,0,.1)",
+            overflow: "hidden",
+          }}
+        >
+          <iframe
+            title="Resume Preview"
+            style={{
+              width: "100%",
+              height: "900px",
+              border: "none",
+            }}
+            srcDoc={renderResumeHTML()}
+          />
+        </div>
+      </div>
     </>
   );
 
-  /* ---------- PORTFOLIO TAB ---------- */
+  /* ---------- PORTFOLIO TAB (unchanged) ---------- */
   const renderPortfolioTab = () => (
     <div style={styles.portfolioContainer}>
       <div style={styles.portfolioHeader}>
@@ -583,7 +523,9 @@ export default function ResultsPage({
             ))}
           </select>
 
-          <button style={styles.actionBtn} onClick={() => setActiveTab("resume")}>Back to Resume</button>
+          <button style={styles.actionBtn} onClick={() => setActiveTab("resume")}>
+            Back to Resume
+          </button>
 
           <button
             style={styles.actionBtn}
@@ -611,7 +553,9 @@ export default function ResultsPage({
             Download Backend HTML
           </button>
 
-          <button style={styles.actionBtn} onClick={downloadPortfolioPreview}>Download Preview HTML</button>
+          <button style={styles.actionBtn} onClick={downloadPortfolioPreview}>
+            Download Preview HTML
+          </button>
         </div>
       </div>
 
@@ -623,7 +567,12 @@ export default function ResultsPage({
 
         <div style={{ background: "#fff", borderRadius: 8, padding: 16 }}>
           <h3 style={{ margin: "0 0 12px" }}>Live Preview</h3>
-          <iframe title="Portfolio" style={styles.iframe} srcDoc={renderPortfolioHTML()} sandbox="allow-scripts allow-same-origin" />
+          <iframe
+            title="Portfolio"
+            style={styles.iframe}
+            srcDoc={renderPortfolioHTML()}
+            sandbox="allow-scripts allow-same-origin"
+          />
         </div>
       </div>
     </div>
@@ -639,62 +588,145 @@ export default function ResultsPage({
             {activeTab === "resume" ? renderResumeTab() : renderPortfolioTab()}
           </div>
 
+          {/* ---- EDITOR PANEL (kept for convenience) ---- */}
           {showEditorPanel && (
             <div style={styles.editorBox}>
               <strong>Edit Resume (instant preview)</strong>
               <div style={{ marginTop: 12 }}>
                 <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>Name</label>
-                <input style={styles.input} value={resumeData.githubUsername} onChange={e => setResumeData(prev => ({ ...prev, githubUsername: e.target.value }))} />
+                <input
+                  style={styles.input}
+                  value={resumeData.githubUsername}
+                  onChange={e => setResumeData(prev => ({ ...prev, githubUsername: e.target.value }))}
+                />
 
                 <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>Headline</label>
-                <input style={styles.input} value={resumeData.headline} onChange={e => setResumeData(prev => ({ ...prev, headline: e.target.value }))} />
+                <input
+                  style={styles.input}
+                  value={resumeData.headline}
+                  onChange={e => setResumeData(prev => ({ ...prev, headline: e.target.value }))}
+                />
 
                 <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>Summary</label>
-                <textarea style={styles.textareaEditor} value={resumeData.summary} onChange={e => setResumeData(prev => ({ ...prev, summary: e.target.value }))} />
+                <textarea
+                  style={styles.textareaEditor}
+                  value={resumeData.summary}
+                  onChange={e => setResumeData(prev => ({ ...prev, summary: e.target.value }))}
+                />
 
-                <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>Skills (Category: a, b; …)</label>
-                <textarea style={styles.textareaEditor} value={skillsToText()} onChange={e => setResumeData(prev => ({ ...prev, categorizedSkills: parseSkills(e.target.value) }))} />
+                <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>
+                  Skills (Category: a, b; …)
+                </label>
+                <textarea
+                  style={styles.textareaEditor}
+                  value={skillsToText()}
+                  onChange={e =>
+                    setResumeData(prev => ({
+                      ...prev,
+                      categorizedSkills: parseSkills(e.target.value),
+                    }))
+                  }
+                />
 
+                {/* Projects */}
                 <div style={{ marginTop: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <label style={{ fontSize: 14 }}>Projects</label>
-                    <button style={{ ...styles.primaryBtn, background: "#10b981", padding: "6px 12px" }} onClick={() => addItem("projects")}>Add</button>
+                    <button
+                      style={{ ...styles.primaryBtn, background: "#10b981", padding: "6px 12px" }}
+                      onClick={() => addItem("projects")}
+                    >
+                      Add
+                    </button>
                   </div>
                   {resumeData.projects?.items?.map((p, i) => (
-                    <div key={i} style={{ border: "1px solid #eee", borderRadius: 8, padding: 8, marginTop: 8 }}>
+                    <div
+                      key={i}
+                      style={{ border: "1px solid #eee", borderRadius: 8, padding: 8, marginTop: 8 }}
+                    >
                       <input style={styles.input} placeholder="Name" value={p.name} onChange={e => updateProject(i, "name", e.target.value)} />
                       <input style={styles.input} placeholder="URL" value={p.html_url} onChange={e => updateProject(i, "html_url", e.target.value)} />
                       <textarea style={styles.textareaEditor} rows={2} placeholder="Description" value={p.description} onChange={e => updateProject(i, "description", e.target.value)} />
                       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-                        <button style={{ ...styles.primaryBtn, background: "#ef4444", padding: "4px 8px" }} onClick={() => removeItem("projects", i)}>Remove</button>
+                        <button
+                          style={{ ...styles.primaryBtn, background: "#ef4444", padding: "4px 8px" }}
+                          onClick={() => removeItem("projects", i)}
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
 
+                {/* Experience */}
                 <div style={{ marginTop: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <label style={{ fontSize: 14 }}>Experience</label>
-                    <button style={{ ...styles.primaryBtn, background: "#10b981", padding: "6px 12px" }} onClick={() => addItem("experience")}>Add</button>
+                    <button
+                      style={{ ...styles.primaryBtn, background: "#10b981", padding: "6px 12px" }}
+                      onClick={() => addItem("experience")}
+                    >
+                      Add
+                    </button>
                   </div>
                   {resumeData.experience?.items?.map((e, i) => (
-                    <div key={i} style={{ border: "1px solid #eee", borderRadius: 8, padding: 8, marginTop: 8 }}>
+                    <div
+                      key={i}
+                      style={{ border: "1px solid #eee", borderRadius: 8, padding: 8, marginTop: 8 }}
+                    >
                       <input style={styles.input} placeholder="Title" value={e.title} onChange={ev => updateExperience(i, "title", ev.target.value)} />
                       <input style={styles.input} placeholder="Company" value={e.company} onChange={ev => updateExperience(i, "company", ev.target.value)} />
                       <input style={styles.input} placeholder="Dates" value={e.dates} onChange={ev => updateExperience(i, "dates", ev.target.value)} />
                       <textarea style={styles.textareaEditor} rows={2} placeholder="Description" value={e.description} onChange={ev => updateExperience(i, "description", ev.target.value)} />
                       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-                        <button style={{ ...styles.primaryBtn, background: "#ef4444", padding: "4px 8px" }} onClick={() => removeItem("experience", i)}>Remove</button>
+                        <button
+                          style={{ ...styles.primaryBtn, background: "#ef4444", padding: "4px 8px" }}
+                          onClick={() => removeItem("experience", i)}
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
 
+                {/* Contact */}
                 <div style={{ marginTop: 16 }}>
                   <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>Contact</label>
-                  <input style={styles.input} placeholder="Email" value={resumeData.contactInfo.email} onChange={e => setResumeData(prev => ({ ...prev, contactInfo: { ...prev.contactInfo, email: e.target.value } }))} />
-                  <input style={styles.input} placeholder="Mobile" value={resumeData.contactInfo.mobile} onChange={e => setResumeData(prev => ({ ...prev, contactInfo: { ...prev.contactInfo, mobile: e.target.value } }))} />
-                  <input style={styles.input} placeholder="LinkedIn" value={resumeData.contactInfo.linkedin} onChange={e => setResumeData(prev => ({ ...prev, contactInfo: { ...prev.contactInfo, linkedin: e.target.value } }))} />
+                  <input
+                    style={styles.input}
+                    placeholder="Email"
+                    value={resumeData.contactInfo.email}
+                    onChange={e =>
+                      setResumeData(prev => ({
+                        ...prev,
+                        contactInfo: { ...prev.contactInfo, email: e.target.value },
+                      }))
+                    }
+                  />
+                  <input
+                    style={styles.input}
+                    placeholder="Mobile"
+                    value={resumeData.contactInfo.mobile}
+                    onChange={e =>
+                      setResumeData(prev => ({
+                        ...prev,
+                        contactInfo: { ...prev.contactInfo, mobile: e.target.value },
+                      }))
+                    }
+                  />
+                  <input
+                    style={styles.input}
+                    placeholder="LinkedIn"
+                    value={resumeData.contactInfo.linkedin}
+                    onChange={e =>
+                      setResumeData(prev => ({
+                        ...prev,
+                        contactInfo: { ...prev.contactInfo, linkedin: e.target.value },
+                      }))
+                    }
+                  />
                 </div>
               </div>
             </div>
