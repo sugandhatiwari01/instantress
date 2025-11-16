@@ -142,3 +142,26 @@ button:hover:not(:disabled) {
   font-size: 14px;
   margin-top: 6px;
 }
+.generate-btn {
+  background: linear-gradient(135deg, #004182, #0a66c2) !important;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Lift effect on hover */
+.generate-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Disabled state */
+.generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
