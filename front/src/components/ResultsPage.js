@@ -722,6 +722,26 @@ const handlePDF = async () => {
                   ))}
                 </div>
 
+{/* Education */}
+<div style={{ marginTop: 16 }}>
+  <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>
+    Education
+  </label>
+  <textarea
+    style={styles.textareaEditor}
+    placeholder="e.g., B.Tech in CSE, XYZ University, 2020–2024"
+    value={resumeData.education}
+    onChange={(e) =>
+      setResumeData((prev) => ({
+        ...prev,
+        education: e.target.value,
+      }))
+    }
+  />
+</div>
+
+
+
                 {/* Contact */}
                 <div style={{ marginTop: 16 }}>
                   <label style={{ fontSize: 14, display: "block", marginBottom: 4 }}>Contact</label>
