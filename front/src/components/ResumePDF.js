@@ -117,7 +117,7 @@ const ResumePDF = ({ data, template = "ats" }) => {
 
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Experience</Text>
-                {data.workExperience?.map((exp, i) => (
+                {data.experience?.items?.map((exp, i) => (
                   <View key={i} style={{ marginBottom: 12 }}>
                     <Text style={styles.bold}>{exp.title} - {exp.company}</Text>
                     <Text style={{ fontSize: 10, color: "#555" }}>{exp.dates}</Text>
@@ -185,10 +185,10 @@ const ResumePDF = ({ data, template = "ats" }) => {
               </View>
             )}
 
-            {data.workExperience?.length > 0 && (
+            {data.experience?.items?.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Experience</Text>
-                {data.workExperience.map((exp, i) => (
+                {data.experience.items.map((exp, i) => (
                   <View key={i} style={{ marginBottom: 12 }}>
                     <Text style={styles.bold}>{exp.title} - {exp.company}</Text>
                     <Text style={{ fontSize: 10, color: "#555" }}>{exp.dates}</Text>
