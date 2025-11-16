@@ -13,6 +13,8 @@ import ResultsPage from "./components/ResultsPage";
 import About from "./components/About";
 import Contact from "./components/Contact";
 import PrivacyPolicy from "./components/PrivacyPolicy";
+import ImproveExperience from "./components/ImproveExperience";
+
 import "./App.css";
 
 function AppContent() {
@@ -48,6 +50,9 @@ function AppContent() {
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
+
+      <Route path="/improve-experience" element={<ImproveExperience />} />
+
       <Route
         path="/input"
         element={
