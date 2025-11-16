@@ -10,14 +10,27 @@ module.exports = (data = {}) => {
     customSections = {},
   } = data;
 
-  const has = {
-    summary: !!summary,
-    skills: Object.keys(categorizedSkills || {}).length > 0,
-    projects: (bestProjects || []).length > 0,
-    experience: (workExperience || []).length > 0,
-    education: !!(education && (education.degree || education.institution || education.content || education.year || education.dates)),
-    contact: (contactInfo && (contactInfo.email || contactInfo.mobile || contactInfo.linkedin || githubUsername)),
-  };
+ const has = {
+  summary: !!summary,
+  skills: Object.keys(categorizedSkills || {}).length > 0,
+  projects: (bestProjects || []).length > 0,
+  experience: (workExperience || []).length > 0,
+
+  // 🔥 FIX: Support both string + object for education
+  education: typeof education === "string"
+    ? education.trim().length > 0
+    : !!(
+        education &&
+        (education.degree ||
+         education.institution ||
+         education.content ||
+         education.year ||
+         education.dates)
+      ),
+
+  contact: (contactInfo && (contactInfo.email || contactInfo.mobile || contactInfo.linkedin || githubUsername)),
+};
+
 
   const esc = (s) => (typeof s === 'string' ? s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : s ?? '');
 
@@ -135,13 +148,20 @@ hr{border:none;border-top:1px solid var(--ring);margin:12px 0}
   ${has.education ? `
   <section class="glass pad sec anchor" id="education">
     <h2>Education</h2>
-    <div class="small">
-      ${esc(education.degree || education.content || 'Education')}
-      ${education.institution ? `, ${esc(education.institution)}`:''}
-      ${education.dates || education.year ? ` (${esc(education.dates || education.year)})`:''}
-      ${education.gpa ? `; GPA: ${esc(education.gpa)}`:''}
+    <div class="small" style="line-height:1.8">
+      ${
+        typeof education === "string"
+          ? esc(education).replace(/\\n/g, "<br>")
+          : `
+            ${esc(education.degree || "")}<br>
+            ${esc(education.institution || "")}<br>
+            ${esc(education.dates || education.year || "")}<br>
+            ${education.gpa ? `GPA: ${esc(education.gpa)}` : ""}
+          `
+      }
     </div>
   </section>` : ''}
+
 
   ${has.contact ? `
   <footer class="glass pad sec anchor" id="contact">
