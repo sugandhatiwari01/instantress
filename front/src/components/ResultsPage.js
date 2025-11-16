@@ -17,6 +17,10 @@ import glassTemplate from "../templates/portfolio/glass";
 import gridTemplate from "../templates/portfolio/grid";
 import minimalPortfolioTemplate from "../templates/portfolio/minimal";
 
+
+import { useLocation } from "react-router-dom";
+
+
 /* ---------- RESUME TEMPLATES ---------- */
 const RESUME_TEMPLATES = {
   ats: atsTemplate,
@@ -102,6 +106,8 @@ export default function ResultsPage({
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const location = useLocation();
+
 
   /* ---------- STATE ---------- */
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -120,6 +126,9 @@ export default function ResultsPage({
     if (hasInitialized) return;
 
     const fromBackend = data || {};
+    const enhancedExp = location.state?.aiEnhancedExperience;
+const enhancedEdu = location.state?.aiEnhancedEducation;
+
     const githubUsername =
       fromBackend.fullName ||
       fromBackend.name ||
@@ -158,12 +167,24 @@ export default function ResultsPage({
         })),
       },
       experience: {
-        title: "Experience",
-        items: Array.isArray(fromBackend.workExperience)
-          ? fromBackend.workExperience
-          : [],
-      },
-      education: fromBackend.education || "",
+  title: "Experience",
+  items: enhancedExp || (
+    Array.isArray(fromBackend.workExperience)
+      ? fromBackend.workExperience
+      : []
+  ),
+},
+
+education:
+  typeof enhancedEdu === "object" && enhancedEdu !== null
+    ? `
+${enhancedEdu.degree || ""}
+${enhancedEdu.institution || ""}
+${enhancedEdu.dates || ""}
+${enhancedEdu.gpa ? `GPA: ${enhancedEdu.gpa}` : ""}
+`
+    : enhancedEdu || fromBackend.education || "",
+
       leetcodeData: fromBackend.leetcodeData || null,
     };
 
@@ -445,6 +466,16 @@ const handlePDF = async () => {
                 </option>
               ))}
             </select>
+
+{/* ⭐ ADD THIS BUTTON HERE ⭐ */}
+  <button
+    style={{ ...styles.primaryBtn, background: "#6D28D9", color: "#fff" }}
+    onClick={() => navigate("/improve-experience")}
+  >
+    Improve Experience with AI
+  </button>
+
+
 
             <button
               style={{ ...styles.primaryBtn, ...styles.generateBtn }}
