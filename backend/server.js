@@ -774,6 +774,78 @@ app.post("/api/generate-portfolio", async (req, res) => {
 });
 
 
+
+function extractJson(text) {
+  if (!text) return null;
+
+  // Try to find the first JSON object in the text
+  const match = text.match(/{[\s\S]*}/);
+  if (!match) return null;
+
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+
+app.post("/api/enhance-experience", async (req, res) => {
+  const { experience, education } = req.body;
+
+  if (!experience && !education) {
+    return res.status(400).json({ error: "Please enter experience or education" });
+  }
+
+  const prompt = `
+Improve the following resume experience & education.
+⭐ Return ONLY pure JSON — no markdown, no explanation.
+
+Input Experience: ${experience}
+Input Education: ${education}
+
+Output Format:
+{
+  "enhancedExperience": [
+    {
+      "title": "Role Title",
+      "company": "Company",
+      "dates": "",
+      "description": "Enhanced bullet points"
+    }
+  ],
+  "enhancedEducation": {
+    "degree": "",
+    "institution": "",
+    "dates": "",
+    "gpa": ""
+  }
+}
+`;
+
+  const aiResponse = await safeGenerateContent({
+    model: "llama-3.1-8b-instant",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  });
+
+  console.log("🔍 RAW AI OUTPUT:", aiResponse);
+
+  // Extract JSON safely
+  const json = extractJson(aiResponse);
+
+  if (!json) {
+    return res.status(500).json({
+      error: "AI returned invalid JSON",
+      raw: aiResponse,
+    });
+  }
+
+  res.json(json);
+});
+
+
+
+
 // Check optional GitHub token and define githubAuthHeader
 const githubAuthHeader = process.env.GITHUB_TOKEN
   ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
