@@ -477,13 +477,7 @@ const handlePDF = async () => {
 
 
 
-            <button
-              style={{ ...styles.primaryBtn, ...styles.generateBtn }}
-              onClick={handleGeneratePortfolio}
-              disabled={localLoading}
-            >
-              {localLoading ? "Generating…" : "Generate Portfolio"}
-            </button>
+            
 
             <button
               style={{ ...styles.primaryBtn, ...styles.pdfBtn }}
