@@ -397,45 +397,7 @@ app.get('/api/linkedin/status', (req, res) => {
   });
 });
 
-const puppeteer = require('puppeteer');
 
-app.post('/api/linkedin/public', async (req, res) => {
-  let { url } = req.body;
-  if (!url?.includes('linkedin.com/in/')) return res.status(400).json({ error: 'Invalid URL' });
-
-  let browser;
-  try {
-    browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-    await page.waitForSelector('script[type="application/ld+json"]', { timeout: 10000 });
-
-    const json = await page.evaluate(() => {
-      const script = document.querySelector('script[type="application/ld+json"]');
-      return script ? JSON.parse(script.textContent) : null;
-    });
-
-    await browser.close();
-
-    if (!json) throw new Error('No JSON-LD found');
-
-    res.json({
-      name: json.name || 'Unknown',
-      headline: json.description || '',
-      image: json.image || '',
-      worksFor: (json.worksFor || []).map(w => ({
-        company: w.name || w.organization?.name || '',
-        jobTitle: w.jobTitle || ''
-      }))
-    });
-  } catch (err) {
-    if (browser) await browser.close();
-    console.warn('Public parse failed:', err.message);
-    res.json({ name: 'Profile', headline: 'Private', image: '', worksFor: [] });
-  }
-});
 // ---- NEW ENDPOINT (add after /api/linkedin/profile) ----
 // server/routes/linkedin.js
 app.get('/api/linkedin/avatar', async (req, res) => {

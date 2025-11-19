@@ -239,8 +239,7 @@ const InputPage = ({
     value={formData.template}
     onChange={handleTemplateChange}
   >
-    <option value="ATS-friendly">ATS Friendly</option>
-    <option value="Creative">Creative</option>
++ <option value="ATS-friendly">ATS Friendly</option>    <option value="Creative">Creative</option>
     <option value="Minimal">Minimal</option>
     <option value="Modern">Modern</option>
     <option value="Sidebar">Sidebar</option>   {/* NEW TEMPLATE */}
