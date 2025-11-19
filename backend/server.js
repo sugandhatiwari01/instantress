@@ -964,8 +964,7 @@ app.get("/api/test-grok", async (req, res) => {
 // Summarize README
 async function summarizeReadme(repoName, readmeText) {
   const prompt = `
-Summarize the GitHub project README in 2-3 technical bullet points focusing on features, technologies, and achievements. Keep it concise, avoid marketing language.
-
+Read the following GitHub README content and provide a concise summary in 4 to 5 bullet points, highlighting the main features, purpose, and technologies used in the project. avoid using symbols emojis make it prfessional and suitable for a resume.
 Project: ${repoName}
 README: ${readmeText.slice(0, 1000)}... (truncated for brevity)
 `;

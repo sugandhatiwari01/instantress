@@ -19,7 +19,6 @@ import minimalPortfolioTemplate from "../templates/portfolio/minimal";
 import animatedTemplate from "../templates/portfolio/animated";
 import retroTemplate from "../templates/portfolio/retro";
 import minimalbwTemplate from "../templates/portfolio/minimal_b&w";
-
 import { useLocation } from "react-router-dom";
 
 
@@ -57,6 +56,7 @@ const PORTFOLIO_TEMPLATES = {
   "Animated": animatedTemplate,
   "Retro": retroTemplate,
   "Minimal B&W": minimalbwTemplate,
+  "photo": neophototTemplate,
 };
 
 /* ---------- STYLES (only for UI controls) ---------- */
