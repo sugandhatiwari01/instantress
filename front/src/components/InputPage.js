@@ -120,21 +120,12 @@ const InputPage = ({
         { withCredentials: true }
       );
 
-      let leetcodeData = null;
-      if (formData.leetcodeUser) {
-        try {
-          const lcResponse = await axios.post(
-            "http://localhost:4000/api/leetcode",
-            { username: formData.leetcodeUser }
-          );
-          leetcodeData = lcResponse.data;
-        } catch (err) {
-          console.warn("LeetCode fetch failed:", err.message);
-        }
-      }
+   
 
-      const finalData = { ...response.data, leetcodeData };
-      setData(finalData);
+      setData(response.data);
+
+
+
       setAiOverview(response.data.summary || "");
       navigate("/results");
     } catch (err) {
