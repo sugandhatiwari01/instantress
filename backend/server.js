@@ -114,10 +114,12 @@ app.post("/api/leetcode", async (req, res) => {
     })) || [];
 
     res.json({
-      username: data.username,
-      rank: data.profile?.ranking || "N/A",
-      languages,
-    });
+  username: data.username,
+  rank: data.profile?.ranking || "N/A",
+  languagesUsed: languages,   // <- rename
+  totalSolved: languages.reduce((n, l) => n + l.solved, 0),
+});
+
   } catch (error) {
     console.error("LeetCode fetch error:", error.message);
     res.status(500).json({ error: "Failed to fetch LeetCode data" });
@@ -1118,6 +1120,7 @@ if (leetcodeUser) {
       variables: { username: leetcodeUser },
     };
 
+
     const lcRes = await axios.post("https://leetcode.com/graphql", query, {
       headers: {
         "Content-Type": "application/json",
@@ -1155,6 +1158,15 @@ if (leetcodeUser) {
 }
 
     allLanguages = [...new Set([...allLanguages, ...leetcodeLanguages])];
+
+    let totalSolved = 0;
+if (req.leetcodeData?.languagesUsed) {
+  totalSolved = req.leetcodeData.languagesUsed.reduce(
+    (sum, l) => sum + (l.solved || 0), 
+    0
+  );
+}
+
 
     // Categorize Skills
     const categorizedSkills = {
@@ -1382,8 +1394,8 @@ function getFullName(linkedinUser, githubUsername) {
 
 const response = {
   githubUsername,
-  fullName,                     // <-- NEW
-  linkedinPicture: req.user?.pictureUrl || null, // <-- NEW
+  fullName,
+  linkedinPicture: req.user?.pictureUrl || null,
   categorizedSkills,
   bestProjects,
   summary: aiOutput.summary,
@@ -1397,6 +1409,19 @@ const response = {
   customSections,
   template,
 };
+
+
+if (req.leetcodeData) {
+  const totalSolved = req.leetcodeData.languagesUsed
+    ?.reduce((s, l) => s + (l.solved || 0), 0) || 0;
+
+  response.leetcodeData = {
+    username: req.leetcodeData.username,
+    rank: req.leetcodeData.rank,
+    languagesUsed: req.leetcodeData.languagesUsed,
+    totalSolved
+  };
+}
 
     res.json(response);
   } catch (error) {
