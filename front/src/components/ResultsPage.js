@@ -11,6 +11,7 @@ import creativeTemplate from "../templates/resume/creative";
 import minimalTemplate from "../templates/resume/minimal";
 import modernTemplate from "../templates/resume/modern";
 import sidebarTemplate from "../templates/resume/sidebar";
+import "./ResultsPage.css";
 
 import darkneonTemplate from "../templates/portfolio/darkneon";
 import glassTemplate from "../templates/portfolio/glass";
@@ -24,6 +25,7 @@ import { useLocation } from "react-router-dom";
 
 
 import ImproveExperience from "./ImproveExperience";
+
 
 
 
@@ -511,32 +513,39 @@ const handlePDF = async () => {
 
 
 
+<div className="button-row">
+
+  <button
+    onClick={handlePDF}
+    disabled={localLoading}
+    className={`btn-theme ${localLoading ? "btn-disabled" : ""}`}
+  >
+    {localLoading ? "Generating…" : "Download PDF"}
+  </button>
+
+  <button
+    onClick={showEditorPanel ? cancelPanelEdit : beginPanelEdit}
+    className="btn-theme btn-brown"
+  >
+    {showEditorPanel ? "Cancel Edit" : "Edit Resume"}
+  </button>
+
+  {showEditorPanel && (
+    <button
+      onClick={savePanelEdit}
+      className="btn-theme btn-dark-brown"
+    >
+      Save Edits
+    </button>
+  )}
+
+</div>
+
 
 
             
 
-            <button
-              style={{ ...styles.primaryBtn, ...styles.pdfBtn }}
-              onClick={handlePDF}
-              disabled={localLoading}
-            >
-              {localLoading ? "Generating…" : "Download PDF"}
-            </button>
-
-            <button
-              style={{ ...styles.primaryBtn, ...styles.editBtn }}
-              onClick={showEditorPanel ? cancelPanelEdit : beginPanelEdit}
-            >
-              {showEditorPanel ? "Cancel Edit" : "Edit Resume"}
-            </button>
-            {showEditorPanel && (
-              <button
-                style={{ ...styles.primaryBtn, ...styles.generateBtn }}
-                onClick={savePanelEdit}
-              >
-                Save Edits
-              </button>
-            )}
+        
           </div>
         </div>
       </div>
