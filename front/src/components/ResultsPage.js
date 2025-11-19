@@ -23,6 +23,11 @@ import minimalbwTemplate from "../templates/portfolio/minimal_b&w";
 import { useLocation } from "react-router-dom";
 
 
+import ImproveExperience from "./ImproveExperience";
+
+
+
+
 /* ---------- RESUME TEMPLATES ---------- */
 const RESUME_TEMPLATES = {
   ats: atsTemplate,
@@ -125,6 +130,7 @@ export default function ResultsPage({
   const [portfolioTemplateName, setPortfolioTemplateName] = useState("Dark Neon");
   const [showEditorPanel, setShowEditorPanel] = useState(false);
   const originalRef = useRef(null);
+  const [showSidebar, setShowSidebar] = useState(false);
 
   /* ---------- INITIAL DATA NORMALISATION ---------- */
   useEffect(() => {
@@ -503,13 +509,7 @@ const handlePDF = async () => {
               ))}
             </select>
 
-{/* ⭐ ADD THIS BUTTON HERE ⭐ */}
-  <button
-    style={{ ...styles.primaryBtn, background: "#6D28D9", color: "#fff" }}
-    onClick={() => navigate("/improve-experience")}
-  >
-    Improve Experience with AI
-  </button>
+
 
 
 
@@ -642,6 +642,31 @@ const handlePDF = async () => {
   /* ---------- MAIN RETURN ---------- */
   return (
     <div style={styles.container}>
+      {/* LEFT SIDE TOOL BUTTON */}
+<div
+  onClick={() => setShowSidebar(true)}
+  style={{
+    position: "fixed",
+    top: "50%",
+    left: 20,
+    transform: "translateY(-50%)",
+    background: "#6D28D9",
+    width: 55,
+    height: 55,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    color: "white",
+    fontSize: 26,
+    zIndex: 2000,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+  }}
+>
+  ☰
+</div>
+
       <div style={styles.content}>
         {renderTabs()}
         <div style={{ display: "flex", gap: 24 }}>
@@ -812,6 +837,96 @@ const handlePDF = async () => {
               </div>
             </div>
           )}
+
+          {/* === SIDEBAR DRAWER === */}
+{/* === SIDEBAR MENU === */}
+{showSidebar && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "300px",
+      height: "100vh",
+      background: "#fff",
+      boxShadow: "4px 0 20px rgba(0,0,0,0.15)",
+      zIndex: 3000,
+      padding: "20px",
+      overflowY: "auto",
+    }}
+  >
+    <button
+      onClick={() => setShowSidebar(false)}
+      style={{
+        background: "#ef4444",
+        border: "none",
+        padding: "8px 16px",
+        color: "white",
+        borderRadius: 6,
+        cursor: "pointer",
+        marginBottom: 20,
+      }}
+    >
+      Close
+    </button>
+
+    <h2>Tools</h2>
+
+    {/* Improve Experience */}
+    <button
+      onClick={() => {
+        setShowSidebar(false);
+        navigate("/improve-experience");
+      }}
+      style={{
+        width: "100%",
+        padding: "12px",
+        marginBottom: 15,
+        background: "#6D28D9",
+        color: "white",
+        border: "none",
+        borderRadius: 6,
+        cursor: "pointer",
+      }}
+    >
+      Improve Experience
+    </button>
+
+    {/* ATS Score */}
+    <button
+      onClick={() => window.open("https://resumeworded.com/score", "_blank")}
+      style={{
+        width: "100%",
+        padding: "12px",
+        marginBottom: 15,
+        background: "#4F46E5",
+        color: "white",
+        border: "none",
+        borderRadius: 6,
+        cursor: "pointer",
+      }}
+    >
+      Check ATS Score
+    </button>
+
+    {/* Grammarly */}
+    <button
+      onClick={() => window.open("https://grammarly.com", "_blank")}
+      style={{
+        width: "100%",
+        padding: "12px",
+        background: "#10B981",
+        color: "white",
+        border: "none",
+        borderRadius: 6,
+        cursor: "pointer",
+      }}
+    >
+      Open Grammarly
+    </button>
+  </div>
+)}
+
         </div>
       </div>
     </div>
