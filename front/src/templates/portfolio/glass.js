@@ -1,223 +1,302 @@
 module.exports = (data = {}) => {
   const {
-    githubUsername = "GlassDev",
+    githubUsername = "OceanDev",
     summary = "",
     categorizedSkills = {},
     bestProjects = [],
     workExperience = [],
     education = {},
     contactInfo = {},
-    customSections = {},
   } = data;
 
- const has = {
-  summary: !!summary,
-  skills: Object.keys(categorizedSkills || {}).length > 0,
-  projects: (bestProjects || []).length > 0,
-  experience: (workExperience || []).length > 0,
+  const esc = (s) =>
+    typeof s === "string"
+      ? s.replace(/[&<>"']/g, (m) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        }[m]))
+      : s ?? "";
 
-  // 🔥 FIX: Support both string + object for education
-  education: typeof education === "string"
-    ? education.trim().length > 0
-    : !!(
-        education &&
-        (education.degree ||
-         education.institution ||
-         education.content ||
-         education.year ||
-         education.dates)
-      ),
+  const has = {
+    summary: !!summary,
+    skills: Object.keys(categorizedSkills).length > 0,
+    projects: bestProjects.length > 0,
+    experience: workExperience.length > 0,
+    education:
+      typeof education === "string"
+        ? education.trim().length > 0
+        : !!(
+            education.degree ||
+            education.institution ||
+            education.year ||
+            education.content
+          ),
+    contact: contactInfo.email || contactInfo.linkedin || githubUsername,
+  };
 
-  contact: (contactInfo && (contactInfo.email || contactInfo.mobile || contactInfo.linkedin || githubUsername)),
-};
-
-
-  const esc = (s) => (typeof s === 'string' ? s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : s ?? '');
-
-  return `<!DOCTYPE html>
+  return `
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(githubUsername)} — Portfolio</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(githubUsername)} — Glass Ocean Portfolio</title>
+
 <style>
-:root{
-  --bg1:#e9d5ff;--bg2:#c7d2fe;--text:#0f172a;--muted:#475569;--card:rgba(255,255,255,.66);--ring:rgba(15,23,42,.12);
-  --brand:#7c3aed;--brand2:#2563eb;--chip:rgba(15,23,42,.06);
+:root {
+  --bg: linear-gradient(180deg, #001f3f, #003a6b, #005f8f);
+  --glass-bg: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.20);
+  --text: #e6faff;
+  --muted: #a8d8ff;
+  --accent: #4ae3ff;
 }
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto}
-a{color:var(--brand);text-decoration:none}
-a:hover{text-decoration:underline}
-.nav{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.4);backdrop-filter:blur(10px) saturate(1.2);border-bottom:1px solid var(--ring)}
-.nav .row{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 20px}
-.links{display:flex;gap:14px;flex-wrap:wrap}
-.logo{font-weight:900;letter-spacing:.06em}
-.wrap{max-width:1100px;margin:0 auto;padding:28px 18px}
-.glass{background:var(--card);border:1px solid var(--ring);border-radius:16px;box-shadow:0 10px 30px rgba(15,23,42,.15)}
-.pad{padding:18px}
-.hero{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}
-.title{font-size:30px;margin:0}
-.small{color:var(--muted)}
-.sec h2{margin:0 0 10px 0}
-.grid{display:grid;gap:16px}
-.grid.cols-3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.project{border:1px dashed var(--ring);border-radius:14px;padding:14px;background:rgba(255,255,255,.6)}
-.project h3{margin:0 0 6px 0}
-.meta{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px}
-.chip{display:inline-block;background:var(--chip);padding:4px 8px;border-radius:999px;border:1px solid var(--ring)}
-.btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:800;
-border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
-.btn:disabled{opacity:.6}
-.anchor{scroll-margin-top:80px}
-hr{border:none;border-top:1px solid var(--ring);margin:12px 0}
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 210px;
+  background: rgba(0, 40, 70, 0.5);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.logo {
+  font-size: 30px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #4ae3ff, #89faff);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+}
+.nav-links a:hover { color: var(--accent); }
+
+/* MAIN CONTENT */
+.main {
+  margin-left: 240px;
+  padding: 40px 32px;
+}
+
+/* WAVE HEADER */
+.wave-header {
+  background: linear-gradient(135deg, rgba(0,150,200,0.4), rgba(0,215,255,0.25));
+  padding: 50px;
+  margin-bottom: 40px;
+  border-radius: 28px;
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.25);
+}
+.wave-header h1 {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 800;
+  color: white;
+}
+.wave-header p {
+  color: var(--muted);
+  font-size: 17px;
+}
+
+/* GLASS CARDS */
+.card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px);
+  padding: 22px;
+  margin-bottom: 28px;
+  border-radius: 20px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+}
+
+.card h2 {
+  margin: 0 0 14px 0;
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(260px,1fr));
+  gap: 16px;
+}
+
+.project {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 16px;
+  border-radius: 16px;
+}
+.project h3 {
+  margin: 0;
+  color: white;
+  font-size: 18px;
+}
+.meta {
+  font-size: 13px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.chip {
+  display: inline-block;
+  padding: 4px 9px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+footer a:hover { color: white; }
 </style>
 </head>
+
 <body>
-<nav class="nav">
-  <div class="row">
-    <div class="logo">👋 ${esc(githubUsername)}</div>
-    <div class="links">
-      <a href="#home">Home</a>
-      ${has.projects ? '<a href="#projects">Projects</a>':''}
-      ${has.skills ? '<a href="#skills">Skills</a>':''}
-      ${has.experience ? '<a href="#experience">Experience</a>':''}
-      ${has.education ? '<a href="#education">Education</a>':''}
-      ${has.contact ? '<a href="#contact">Contact</a>':''}
-    </div>
+
+<div class="sidebar">
+  <div class="logo">${esc(githubUsername)}</div>
+  <div class="nav-links">
+    <a href="#summary">Summary</a>
+    ${has.projects ? `<a href="#projects">Projects</a>` : ""}
+    ${has.skills ? `<a href="#skills">Skills</a>` : ""}
+    ${has.experience ? `<a href="#experience">Experience</a>` : ""}
+    ${has.education ? `<a href="#education">Education</a>` : ""}
+    ${has.contact ? `<a href="#contact">Contact</a>` : ""}
   </div>
-</nav>
-
-<div class="wrap">
-  <section class="glass pad hero anchor" id="home">
-    <h1 class="title">${esc(githubUsername)}</h1>
-    <div class="small">Glassmorphism • clean & friendly</div>
-  </section>
-
-  ${has.summary ? `
-  <section class="glass pad sec">
-    <h2>Summary</h2>
-    <p class="small" style="line-height:1.8">${esc(summary)}</p>
-  </section>` : ''}
-
-  ${has.projects ? `
-  <section class="sec anchor" id="projects">
-    <h2>Projects</h2>
-    <div class="grid cols-3">
-      ${(bestProjects||[]).map(p=>`
-        <article class="project glass">
-          <div class="pad">
-            <h3><a href="${esc(p.html_url || p.url || '#')}" target="_blank" rel="noopener">${esc(p.name||'Project')}</a></h3>
-            <p class="small">${esc((p.description||'').replace(/^•\\s*/,'').split('\\n').join('<br>'))}</p>
-            <div class="meta">
-              ${p.language?`<span class="chip">${esc(p.language)}</span>`:''}
-              ${p.stargazers_count || p.stars ? `<span>⭐ ${(p.stargazers_count||p.stars)}</span>`:''}
-            </div>
-          </div>
-        </article>
-      `).join('')}
-    </div>
-  </section>` : ''}
-
-  ${has.skills ? `
-  <section class="glass pad sec anchor" id="skills">
-    <h2>Skills</h2>
-    ${Object.entries(categorizedSkills||{}).map(([k,v])=>`
-      <div style="margin:8px 0">
-        <strong>${esc(k)}:</strong>
-        <span class="small">${(v||[]).map(esc).join(', ')}</span>
-      </div>
-    `).join('')}
-  </section>` : ''}
-
-  ${has.experience ? `
-  <section class="glass pad sec anchor" id="experience">
-    <h2>Experience</h2>
-    ${(workExperience||[]).map(e=>`
-      <div style="padding:8px 0">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <strong>${esc(e.title||'Role')}</strong>
-          <span class="small">${esc(e.dates||'')}</span>
-        </div>
-        <div class="small">${esc(e.company||'')}</div>
-        ${e.description?`<p class="small" style="margin-top:6px;line-height:1.8">${esc(e.description)}</p>`:''}
-        <hr />
-      </div>
-    `).join('')}
-  </section>` : ''}
-
-  ${has.education ? `
-  <section class="glass pad sec anchor" id="education">
-    <h2>Education</h2>
-    <div class="small" style="line-height:1.8">
-      ${
-        typeof education === "string"
-          ? esc(education).replace(/\\n/g, "<br>")
-          : `
-            ${esc(education.degree || "")}<br>
-            ${esc(education.institution || "")}<br>
-            ${esc(education.dates || education.year || "")}<br>
-            ${education.gpa ? `GPA: ${esc(education.gpa)}` : ""}
-          `
-      }
-    </div>
-  </section>` : ''}
-
-
-  ${has.contact ? `
-  <footer class="glass pad sec anchor" id="contact">
-    <h2>Contact</h2>
-    <div class="small" style="display:grid;gap:6px">
-      ${contactInfo.email ? `📧 ${esc(contactInfo.email)}<br/>` : ''}
-      ${contactInfo.mobile ? `📱 ${esc(contactInfo.mobile)}<br/>` : ''}
-      ${contactInfo.linkedin ? `🔗 <a target="_blank" rel="noopener" href="${esc(contactInfo.linkedin)}">LinkedIn</a><br/>` : ''}
-      🐙 <a target="_blank" rel="noopener" href="https://github.com/${esc(githubUsername)}">GitHub</a>
-    </div>
-    <div style="margin-top:14px">
-      <button class="btn" id="resumeBtn">⬇ Download Resume (HTML)</button>
-    </div>
-  </footer>` : ''}
 </div>
 
-<script>
-(function(){
-  const backend = window.PORTFOLIO_BACKEND || 'http://localhost:4000';
-  const btn = document.getElementById('resumeBtn');
-  if(btn){
-    btn.addEventListener('click', async ()=>{
-      btn.disabled = true;
-      try{
-        const payload = {
-          template: "minimal",
-          githubUsername: ${JSON.stringify(githubUsername)},
-          summary: ${JSON.stringify(summary)},
-          categorizedSkills: ${JSON.stringify(categorizedSkills)},
-          bestProjects: ${JSON.stringify(bestProjects)},
-          workExperience: ${JSON.stringify(workExperience)},
-          education: ${JSON.stringify(education)},
-          contactInfo: ${JSON.stringify(contactInfo)},
-          customSections: ${JSON.stringify(customSections)}
-        };
-        const res = await fetch(backend + '/api/export-resume-html', {
-          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
-        });
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const html = await res.text();
-        const blob = new Blob([html], {type:'text/html'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href=url; a.download='resume.html'; a.click();
-        URL.revokeObjectURL(url);
-      }catch(e){ alert('Resume download failed: '+e.message); }
-      finally{ btn.disabled=false; }
-    });
-  }
-  document.querySelectorAll('a[href^="#"]').forEach(a=>{
-    a.addEventListener('click', e=>{
-      const id=a.getAttribute('href').slice(1), el=document.getElementById(id);
-      if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth'}); }
-    });
-  });
-})();
-</script>
+<div class="main">
+
+  <!-- HEADER -->
+  <div class="wave-header">
+    <h1>${esc(githubUsername)}'s Portfolio</h1>
+    <p>Diving deep into development — exploring waves of creativity.</p>
+  </div>
+
+  <!-- SUMMARY -->
+  ${has.summary ? `
+  <div class="card" id="summary">
+    <h2>Summary</h2>
+    <p>${esc(summary)}</p>
+  </div>` : ""}
+
+  <!-- PROJECTS -->
+  ${has.projects ? `
+  <div class="card" id="projects">
+    <h2>Projects</h2>
+    <div class="grid">
+      ${bestProjects
+        .map(
+          (p) => `
+        <div class="project">
+          <h3>${esc(p.name)}</h3>
+          <p>${esc(p.description || "")}</p>
+          <div class="meta">
+            ${p.language ? `<span class="chip">${esc(p.language)}</span>` : ""}
+            ${
+              p.stargazers_count || p.stars
+                ? `⭐ ${(p.stargazers_count || p.stars)}`
+                : ""
+            }
+          </div>
+        </div>`
+        )
+        .join("")}
+    </div>
+  </div>` : ""}
+
+  <!-- SKILLS -->
+  ${has.skills ? `
+  <div class="card" id="skills">
+    <h2>Skills</h2>
+    ${Object.entries(categorizedSkills)
+      .map(
+        ([k, v]) => `
+        <p><strong>${esc(k)}:</strong> ${v.map(esc).join(", ")}</p>`
+      )
+      .join("")}
+  </div>` : ""}
+
+  <!-- EXPERIENCE -->
+  ${has.experience ? `
+  <div class="card" id="experience">
+    <h2>Experience</h2>
+    ${workExperience
+      .map(
+        (e) => `
+      <p>
+        <strong>${esc(e.title)}</strong> — ${esc(e.company)}<br>
+        <em>${esc(e.dates)}</em><br>
+        ${esc(e.description || "")}
+      </p>`
+      )
+      .join("")}
+  </div>` : ""}
+
+  <!-- EDUCATION -->
+  ${has.education ? `
+  <div class="card" id="education">
+    <h2>Education</h2>
+    ${
+      typeof education === "string"
+        ? esc(education).replace(/\n/g, "<br>")
+        : `
+      <p>
+        <strong>${esc(education.degree)}</strong><br>
+        ${esc(education.institution)}<br>
+        ${esc(education.year || education.dates)}
+      </p>`
+    }
+  </div>` : ""}
+
+  <!-- CONTACT -->
+  ${has.contact ? `
+  <footer class="card" id="contact">
+    <h2>Contact</h2>
+    ${contactInfo.email ? `📧 ${esc(contactInfo.email)}<br><br>` : ""}
+    <strong>GitHub:</strong><br>
+    <a href="https://github.com/${esc(githubUsername)}" target="_blank">
+      github.com/${esc(githubUsername)}
+    </a>
+    ${contactInfo.linkedin ? `<br><br>🔗 <a href="${esc(contactInfo.linkedin)}">LinkedIn</a>` : ""}
+  </footer>` : ""}
+
+</div>
+
 </body>
 </html>`;
 };

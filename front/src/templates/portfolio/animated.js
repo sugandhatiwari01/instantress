@@ -12,7 +12,7 @@ module.exports = (data = {}) => {
 
   const esc = (s) =>
     typeof s === "string"
-      ? s.replace(/[&<>"']/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]))
+      ? s.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]))
       : s ?? "";
 
   return `<!DOCTYPE html>
@@ -41,7 +41,6 @@ module.exports = (data = {}) => {
     overflow-x: hidden;
   }
 
-  /* Floating animated blobs */
   .blob {
     position: fixed;
     width: 420px;
@@ -87,11 +86,6 @@ module.exports = (data = {}) => {
     color: transparent;
     margin: 0;
   }
-  .tagline {
-    color: var(--muted);
-    font-size: 16px;
-    margin-top: 8px;
-  }
 
   .glass {
     background: var(--card);
@@ -101,7 +95,6 @@ module.exports = (data = {}) => {
     box-shadow: 0 8px 40px rgba(0,0,0,0.35);
     margin-bottom: 28px;
     backdrop-filter: blur(16px);
-    animation: fadeIn 1.2s ease forwards;
   }
 
   h2 {
@@ -218,11 +211,17 @@ module.exports = (data = {}) => {
       : ""
   }
 
+  <!-- CONTACT SECTION (UPDATED) -->
   <div class="glass">
     <h2>Contact</h2>
     <p>
-      ${contactInfo.email ? `✉ ${esc(contactInfo.email)}<br>` : ""}
-      ${contactInfo.mobile ? `☎ ${esc(contactInfo.mobile)}<br>` : ""}
+      ${contactInfo.email ? `✉ ${esc(contactInfo.email)}<br><br>` : ""}
+
+      <!-- GitHub link added -->
+      🐙 <a href="https://github.com/${esc(githubUsername)}" target="_blank">
+            GitHub → ${esc(githubUsername)}
+          </a><br><br>
+
       ${
         contactInfo.linkedin
           ? `🔗 <a href="${esc(contactInfo.linkedin)}" target="_blank">LinkedIn</a>`
@@ -230,6 +229,7 @@ module.exports = (data = {}) => {
       }
     </p>
   </div>
+
 </div>
 
 </body>

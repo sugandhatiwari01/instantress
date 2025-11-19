@@ -1,7 +1,7 @@
-// flowWave.js
+// cyberGrid.js
 module.exports = (data = {}) => {
   const {
-    githubUsername = "FlowDev",
+    githubUsername = "NeoCoder",
     summary = "",
     categorizedSkills = {},
     bestProjects = [],
@@ -12,7 +12,13 @@ module.exports = (data = {}) => {
 
   const esc = (s) =>
     typeof s === "string"
-      ? s.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]))
+      ? s.replace(/[&<>"']/g, (m) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        }[m]))
       : s ?? "";
 
   return `<!DOCTYPE html>
@@ -20,159 +26,145 @@ module.exports = (data = {}) => {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>${esc(githubUsername)} — Portfolio</title>
+<title>${esc(githubUsername)} — Cyber Grid Portfolio</title>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;600&display=swap');
+
   :root {
-    --bg: #f7f2fc;
-    --card: rgba(255, 255, 255, 0.65);
-    --text: #2a2344;
-    --muted: #6b6280;
-    --accent: #b388ff;
-    --accent2: #7dd3fc;
-    --shadow: 0 8px 35px rgba(72, 0, 120, 0.15);
+    --bg: #03010f;
+    --grid: rgba(0, 255, 255, 0.1);
+    --card: rgba(0, 0, 0, 0.35);
+    --text: #c8f8ff;
+    --muted: #78b2c8;
+    --neon: #00f2ff;
+    --neon2: #ff00e6;
+    --shadow: 0 0 25px rgba(0, 255, 255, 0.35);
   }
 
   body {
     margin: 0;
-    font-family: 'Inter', sans-serif;
     background: var(--bg);
+    font-family: 'Inter', sans-serif;
     color: var(--text);
     overflow-x: hidden;
   }
 
-  /* Decorative flowing gradient wave */
-  .wave {
+  .grid-lines {
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 60px 60px;
     position: fixed;
-    top: -120px;
-    left: -200px;
-    width: 700px;
-    height: 700px;
-    background: radial-gradient(circle at 30% 30%, var(--accent), transparent 60%);
-    filter: blur(90px);
-    opacity: 0.35;
-    animation: drift 14s infinite linear;
-    z-index: -2;
+    inset: 0;
+    z-index: -10;
+    animation: scan 18s linear infinite;
   }
-  .wave:nth-child(2) {
-    top: auto;
-    bottom: -180px;
-    right: -180px;
-    background: radial-gradient(circle at 50% 50%, var(--accent2), transparent 65%);
-    animation-duration: 20s;
+  @keyframes scan { 
+    0% { background-position: 0 0; }
+    100% { background-position: 120px 120px; }
   }
 
-  @keyframes drift {
-    0% { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(25deg) scale(1.15); }
-    100% { transform: rotate(0deg) scale(1); }
+  .glow {
+    position: fixed;
+    bottom: -140px;
+    left: 0;
+    width: 100%;
+    height: 240px;
+    background: radial-gradient(circle at center, var(--neon2), transparent 70%);
+    opacity: 0.4;
+    filter: blur(80px);
+    z-index: -9;
   }
 
   .wrap {
     max-width: 1050px;
     margin: auto;
-    padding: 60px 22px;
+    padding: 60px 24px;
   }
 
   .header {
     text-align: center;
     margin-bottom: 60px;
-    animation: fadeUp 1s ease-out forwards;
+    animation: rise 1.2s ease-out forwards;
   }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(25px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
   .header h1 {
-    font-size: 42px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    color: transparent;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 44px;
+    text-shadow: 0 0 20px var(--neon);
+    color: var(--neon);
     margin: 0;
-  }
-
-  .tag {
-    margin-top: 10px;
-    color: var(--muted);
-    font-size: 17px;
   }
 
   .section {
     background: var(--card);
-    border-radius: 22px;
-    padding: 28px;
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    border-radius: 14px;
+    padding: 26px;
     margin-bottom: 32px;
-    backdrop-filter: blur(18px);
     box-shadow: var(--shadow);
-    animation: fadeUp 1.2s ease-out forwards;
+    backdrop-filter: blur(10px);
   }
 
   h2 {
-    margin: 0 0 14px 0;
+    font-family: 'Orbitron', sans-serif;
     font-size: 24px;
-    color: var(--accent);
-    letter-spacing: 0.4px;
+    margin: 0 0 16px 0;
+    color: var(--neon);
   }
 
   .item {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     line-height: 1.7;
   }
 
   .project-title {
     font-weight: 600;
     font-size: 17px;
-    color: var(--accent2);
+    color: var(--neon2);
   }
 
   a {
-    color: var(--accent2);
-    font-weight: 600;
+    color: var(--neon);
+    text-decoration: none;
   }
 
   .muted {
     color: var(--muted);
   }
-
-  hr {
-    border: none;
-    border-top: 1px solid rgba(120, 120, 150, 0.15);
-    margin: 22px 0;
-  }
-
 </style>
 </head>
 
 <body>
 
-<div class="wave"></div>
-<div class="wave"></div>
+<div class="grid-lines"></div>
+<div class="glow"></div>
 
 <div class="wrap">
 
-  <!-- HEADER -->
   <div class="header">
     <h1>${esc(githubUsername)}</h1>
-    <div class="tag">A flowing portfolio created with clean design ✦</div>
   </div>
 
-  <!-- SUMMARY -->
   ${
     summary
       ? `<div class="section">
-          <h2>About Me</h2>
+          <h2>INTRO</h2>
           <p>${esc(summary)}</p>
         </div>`
       : ""
   }
 
-  <!-- SKILLS -->
   ${
     Object.keys(categorizedSkills).length
       ? `<div class="section">
-          <h2>Skills</h2>
+          <h2>CORE SYSTEM SKILLS</h2>
           ${Object.entries(categorizedSkills)
             .map(
               ([k, v]) =>
@@ -183,11 +175,10 @@ module.exports = (data = {}) => {
       : ""
   }
 
-  <!-- PROJECTS -->
   ${
     bestProjects?.length
       ? `<div class="section">
-          <h2>Projects</h2>
+          <h2>PROJECT MODULES</h2>
           ${bestProjects
             .map(
               (p) =>
@@ -196,7 +187,7 @@ module.exports = (data = {}) => {
                   <div class="muted">${esc(p.description || "")}</div>
                   ${
                     p.html_url || p.url
-                      ? `<div><a href="${esc(p.html_url || p.url)}" target="_blank">Visit →</a></div>`
+                      ? `<div><a href="${esc(p.html_url || p.url)}" target="_blank">LAUNCH →</a></div>`
                       : ""
                   }
                 </div>`
@@ -206,11 +197,10 @@ module.exports = (data = {}) => {
       : ""
   }
 
-  <!-- EXPERIENCE -->
   ${
     workExperience?.length
       ? `<div class="section">
-          <h2>Experience</h2>
+          <h2>PROFESSIONAL LOGS</h2>
           ${workExperience
             .map(
               (e) =>
@@ -225,11 +215,10 @@ module.exports = (data = {}) => {
       : ""
   }
 
-  <!-- EDUCATION -->
   ${
     education
       ? `<div class="section">
-          <h2>Education</h2>
+          <h2>TRAINING / EDUCATION</h2>
           <p>${esc(education)}</p>
         </div>`
       : ""
@@ -237,10 +226,16 @@ module.exports = (data = {}) => {
 
   <!-- CONTACT -->
   <div class="section">
-    <h2>Contact</h2>
+    <h2>CONTACT NODE</h2>
     <p>
       ${contactInfo.email ? `✉ ${esc(contactInfo.email)}<br>` : ""}
-      ${contactInfo.mobile ? `☎ ${esc(contactInfo.mobile)}<br>` : ""}
+
+      <!-- REMOVED PHONE NUMBER -->
+
+      🐙 <a href="https://github.com/${esc(githubUsername)}" target="_blank">
+          GitHub Profile
+      </a><br>
+
       ${
         contactInfo.linkedin
           ? `🔗 <a href="${esc(contactInfo.linkedin)}" target="_blank">LinkedIn</a>`

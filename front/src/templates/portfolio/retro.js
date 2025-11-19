@@ -69,7 +69,7 @@ module.exports = (data = {}) => {
               <div><strong>${esc(p.name || "Project")}</strong> — <a href="${esc(
                 p.html_url || p.url || "#"
               )}" target="_blank">open</a></div>
-              <div class="muted">${esc((p.description || "").replace(/^•\s*/, ""))}</div>
+              <div class="muted">${esc((p.description || "").replace(/^•\\s*/, ""))}</div>
             </div>
           `
             )
@@ -100,10 +100,16 @@ module.exports = (data = {}) => {
           <div class="muted">Contact:</div>
           <div style="margin-top:6px">
             ${contactInfo.email ? `✉ ${esc(contactInfo.email)}  ` : ""}
-            ${contactInfo.mobile ? `☎ ${esc(contactInfo.mobile)}  ` : ""}
-            ${contactInfo.linkedin ? `🔗 <a href="${esc(contactInfo.linkedin)}" target="_blank">LinkedIn</a>` : ""}
+
+            <!-- GitHub added -->
+            🐙 <a href="https://github.com/${esc(githubUsername)}" target="_blank">
+              github.com/${esc(githubUsername)}
+            </a>
+
+            ${contactInfo.linkedin ? `<br/>🔗 <a href="${esc(contactInfo.linkedin)}" target="_blank">LinkedIn</a>` : ""}
           </div>
         </div>
+
       </div>
     </div>
   </div>
