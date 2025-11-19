@@ -131,6 +131,8 @@ export default function ResultsPage({
     if (hasInitialized) return;
 
     const fromBackend = data || {};
+    console.log("🔥 FRONTEND received backend data:", fromBackend);
+
     const enhancedExp = location.state?.aiEnhancedExperience;
 const enhancedEdu = location.state?.aiEnhancedEducation;
 
@@ -140,6 +142,22 @@ const enhancedEdu = location.state?.aiEnhancedEducation;
       fromBackend.githubUsername ||
       (user && (user.fullName || user.name)) ||
       "Your Name";
+
+      // --- merge LeetCode languages into programming languages ---
+// --- merge LeetCode languages into programming languages ---
+const lcLangs = (fromBackend.leetcodeData?.languagesUsed || [])
+  .map(l => l.name.trim());
+
+// existing programming languages from backend
+const existingPL = new Set(
+  (fromBackend.categorizedSkills?.["Programming Languages"] || [])
+    .map(s => s.trim())
+);
+
+// add LeetCode languages (no repeats)
+lcLangs.forEach(lang => existingPL.add(lang));
+
+
 
     const normalized = {
       githubUsername,
@@ -158,9 +176,22 @@ const enhancedEdu = location.state?.aiEnhancedEducation;
         mobile: fromBackend.contactInfo?.mobile || "",
         linkedin: fromBackend.contactInfo?.linkedin || user?.profileUrl || "",
       },
-      summary: fromBackend.summary || aiOverview || "",
-      categorizedSkills:
-        fromBackend.categorizedSkills || fromBackend.skillsSummary || {},
+      summary:
+  (fromBackend.summary || aiOverview || "") +
+  (fromBackend.leetcodeData?.totalSolved >= 200
+    ? `\nSolved 200+ problems on LeetCode.`
+    : ""),
+
+      
+
+// merge back into categorized skills
+categorizedSkills: {
+  ...fromBackend.categorizedSkills,
+  "Programming Languages": Array.from(existingPL),
+},
+
+
+
       projects: {
         title: "Projects",
         items: (fromBackend.bestProjects || []).map(p => ({
