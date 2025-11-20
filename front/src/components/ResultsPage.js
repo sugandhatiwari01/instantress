@@ -43,7 +43,7 @@ const RESUME_TEMPLATE_OPTIONS = [
   { value: "ats",      label: "ATS Friendly" },
   { value: "creative", label: "Creative" },
   { value: "minimal",  label: "Minimal" },
-  { value: "modern",   label: "Modern" },
+  { value: "modern",   label: "Balanced" },
   { value: "sidebar",  label: "Sidebar" },
 ];
 
@@ -72,8 +72,8 @@ const styles = {
 
   /* Tabs */
   tabContainer: { display: "flex", gap: 12, marginBottom: 24 },
-  tabBtn: { padding: "10px 20px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 },
-  activeTab: { background: "#4f46e5", color: "#fff" },
+  tabBtn: { padding: "10px 20px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 , background: "#a67c52"},
+  activeTab: { background: "#8e5822ff", color: "#fff" },
 
   /* Header (controls only) */
   headerCard: { background: "#fff", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,.1)", padding: 32, marginBottom: 24 },
@@ -180,7 +180,6 @@ lcLangs.forEach(lang => existingPL.add(lang));
           fromBackend.email ||
           user?.email ||
           "",
-        mobile: fromBackend.contactInfo?.mobile || "",
         linkedin: fromBackend.contactInfo?.linkedin || user?.profileUrl || "",
       },
       summary:
@@ -819,17 +818,7 @@ const handlePDF = async () => {
                       }))
                     }
                   />
-                  <input
-                    style={styles.input}
-                    placeholder="Mobile"
-                    value={resumeData.contactInfo.mobile}
-                    onChange={e =>
-                      setResumeData(prev => ({
-                        ...prev,
-                        contactInfo: { ...prev.contactInfo, mobile: e.target.value },
-                      }))
-                    }
-                  />
+         
                   <input
                     style={styles.input}
                     placeholder="LinkedIn"
