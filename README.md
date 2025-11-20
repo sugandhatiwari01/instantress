@@ -6,10 +6,6 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green)](https://nodejs.org)
 [![Stars](https://img.shields.io/github/stars/yourusername/resume-portfolio-generator?style=social)](https://github.com/yourusername/resume-portfolio-generator)
 
-🔗 **Live Demo:** Coming soon on Vercel — `https://resume.smaranjitghose.me`
-
----
-
 ## ✨ Features
 
 - ⚡ **Zero manual typing** — Only GitHub username required (mandatory)
