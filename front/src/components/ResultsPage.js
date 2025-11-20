@@ -61,7 +61,6 @@ const PORTFOLIO_TEMPLATES = {
   "Animated": animatedTemplate,
   "Retro": retroTemplate,
   "Minimal B&W": minimalbwTemplate,
-  "photo": neophototTemplate,
 };
 
 /* ---------- STYLES (only for UI controls) ---------- */
