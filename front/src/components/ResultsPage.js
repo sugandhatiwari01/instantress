@@ -605,10 +605,7 @@ const handlePDF = async () => {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <div style={styles.codePreview}>
-          <h3 style={{ margin: "0 0 12px", color: "#fff" }}>Generated Code</h3>
-          <pre style={styles.codeBlock}>{portfolioCode || "Click “Generate Portfolio” first."}</pre>
-        </div>
+        
 
         <div style={{ background: "#fff", borderRadius: 8, padding: 16 }}>
           <h3 style={{ margin: "0 0 12px" }}>Live Preview</h3>
