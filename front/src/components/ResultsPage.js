@@ -868,7 +868,7 @@ const handlePDF = async () => {
 
     {/* ATS Score */}
     <button
-      onClick={() => window.open("https://resumeworded.com/score", "_blank")}
+      onClick={() => window.open("https://novoresume.com/tools/ats-resume-checker", "_blank")}
       style={{
         width: "100%",
         padding: "12px",
