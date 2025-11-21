@@ -49,11 +49,11 @@ const RESUME_TEMPLATE_OPTIONS = [
 ];
 
 const TEMPLATE_NAME_MAP = {
-  "ATS-friendly": "ats",
-  Creative: "creative",
-  Minimal: "minimal",
-  Modern: "modern",
-  Sidebar: "sidebar",
+  "ATS Friendly": "ats",
+  "Creative": "creative",
+  "Minimal": "minimal",
+  "Modern": "modern",
+  "Sidebar": "sidebar",
 };
 
 const PORTFOLIO_TEMPLATES = {
