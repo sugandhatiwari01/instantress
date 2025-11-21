@@ -11,16 +11,12 @@
   margin-bottom: 20px;
 }
 
-.results-page button {
-  background: #9d00ff;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  margin-bottom: 20px;
+.btn-theme,
+.results-page .btn-theme {
+  background: linear-gradient(135deg, #a67c52, #d2b48c) !important;
+  color: white !important;
 }
+
 
 .results-page button:disabled {
   background: #ccc;
@@ -37,3 +33,83 @@
   text-align: center;
 }
 
+.button-row {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-theme {
+  background: linear-gradient(135deg, #a67c52, #d2b48c);
+  color: white;
+  padding: 12px 26px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  min-width: 150px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transition: 0.2s ease;
+}
+
+.btn-theme:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.20);
+}
+
+.btn-brown {
+  background: #a67c52;
+}
+
+.btn-dark-brown {
+  background: #6B4F2A;
+}
+
+.btn-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.results-page button:not(.btn-theme):not(.btn-brown):not(.btn-dark-brown) {
+  background: #9d00ff;
+  color: #000;
+}
+/* Button row alignment */
+.button-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Make all three buttons exactly the same size */
+.button-row button {
+  min-width: 180px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+/* Theme buttons */
+.btn-theme,
+.results-page .btn-theme {
+  background: linear-gradient(135deg, #a67c52, #d2b48c) !important;
+  color: white !important;
+}
+
+.btn-brown {
+  background: #a67c52 !important;
+  color: white !important;
+}
+
+.btn-dark-brown {
+  background: #6B4F2A !important;
+  color: white !important;
+}
+
+/* Disabled state */
+.btn-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

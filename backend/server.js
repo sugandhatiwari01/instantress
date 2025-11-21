@@ -966,8 +966,17 @@ app.get("/api/test-grok", async (req, res) => {
 // Summarize README
 async function summarizeReadme(repoName, readmeText) {
   const prompt = `
-Summarize the GitHub project README in 2-3 technical bullet points focusing on features, technologies, and achievements. Keep it concise, avoid marketing language.
+You are a senior software engineer writing your own resume. 
+Analyze the following GitHub repository README and return EXACTLY 5 bullet points in strict XYZ format: 
+"Accomplished [X] as measured by [Y], by doing [Z]".
 
+MANDATORY RULES (the model must obey or output is invalid):
+- Return ONLY the 5 bullet points
+- No introduction, no explanation, no assumptions, no headings, no "Here are...", no emojis, no markdown
+- No text before or after the bullet points
+- Each bullet must start with "Accomplished"
+- Use quantifiable metrics and strong technical verbs
+- Base everything 100% on the actual README content
 Project: ${repoName}
 README: ${readmeText.slice(0, 1000)}... (truncated for brevity)
 `;

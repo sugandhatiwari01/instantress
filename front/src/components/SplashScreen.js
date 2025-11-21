@@ -34,7 +34,7 @@ function SplashScreen() {
 
       {/* Header */}
       <header className="main-header">
-        <div className="brand">ResumeAI</div>
+        <div className="brand">Seed</div>
         <div className="nav-buttons">
           <NavLink to="/input" className="nav-btn brown-btn">🏗 Build Resume</NavLink>
           <NavLink to="/about" className="nav-btn light-btn">📖 About</NavLink>
@@ -57,7 +57,7 @@ function SplashScreen() {
             <span className="highlight"> Elegant Simplicity</span>
           </h1>
           <p className="hero-subtext">
-            Create resumes and portfolios that feel personal and polished — designed to tell your story with timeless beauty.
+            Create resumes and portfolios that feel personal and polished  designed to tell your story with timeless beauty.
           </p>
           <div className="hero-actions">
             <Link to="/input" className="btn-primary">Get Started</Link>

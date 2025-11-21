@@ -190,17 +190,6 @@ const InputPage = ({
           </div>
 
           <div className="form-group">
-            <label>Mobile</label>
-            <input
-              type="text"
-              name="contactInfo.mobile"
-              value={formData.contactInfo.mobile}
-              onChange={handleInputChange}
-              placeholder="e.g., +91 9876543210"
-            />
-          </div>
-
-          <div className="form-group">
             <label>LinkedIn Profile</label>
             <input
               type="url"
@@ -230,9 +219,10 @@ const InputPage = ({
     value={formData.template}
     onChange={handleTemplateChange}
   >
-+ <option value="ATS-friendly">ATS Friendly</option>    <option value="Creative">Creative</option>
++ <option value="ATS-friendly">ATS Friendly</option>  
+  <option value="Creative">Creative</option>
     <option value="Minimal">Minimal</option>
-    <option value="Modern">Modern</option>
+    <option value="Modern">Balanced</option>
     <option value="Sidebar">Sidebar</option>   {/* NEW TEMPLATE */}
   </select>
 

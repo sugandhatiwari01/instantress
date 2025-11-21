@@ -11,6 +11,7 @@ import creativeTemplate from "../templates/resume/creative";
 import minimalTemplate from "../templates/resume/minimal";
 import modernTemplate from "../templates/resume/modern";
 import sidebarTemplate from "../templates/resume/sidebar";
+import "./ResultsPage.css";
 
 import darkneonTemplate from "../templates/portfolio/darkneon";
 import glassTemplate from "../templates/portfolio/glass";
@@ -18,12 +19,13 @@ import gridTemplate from "../templates/portfolio/grid";
 import minimalPortfolioTemplate from "../templates/portfolio/minimal";
 import animatedTemplate from "../templates/portfolio/animated";
 import retroTemplate from "../templates/portfolio/retro";
-import cybergridTemplate from "../templates/portfolio/cybergrid";
+import minimalbwTemplate from "../templates/portfolio/minimal_b&w";
 
 import { useLocation } from "react-router-dom";
 
 
 import ImproveExperience from "./ImproveExperience";
+
 
 
 
@@ -42,7 +44,7 @@ const RESUME_TEMPLATE_OPTIONS = [
   { value: "ats",      label: "ATS Friendly" },
   { value: "creative", label: "Creative" },
   { value: "minimal",  label: "Minimal" },
-  { value: "modern",   label: "Modern" },
+  { value: "modern",   label: "Balanced" },
   { value: "sidebar",  label: "Sidebar" },
 ];
 
@@ -71,8 +73,8 @@ const styles = {
 
   /* Tabs */
   tabContainer: { display: "flex", gap: 12, marginBottom: 24 },
-  tabBtn: { padding: "10px 20px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 },
-  activeTab: { background: "#4f46e5", color: "#fff" },
+  tabBtn: { padding: "10px 20px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 , background: "#a67c52"},
+  activeTab: { background: "#8e5822ff", color: "#fff" },
 
   /* Header (controls only) */
   headerCard: { background: "#fff", borderRadius: 16, boxShadow: "0 10px 30px rgba(0,0,0,.1)", padding: 32, marginBottom: 24 },
@@ -179,7 +181,6 @@ lcLangs.forEach(lang => existingPL.add(lang));
           fromBackend.email ||
           user?.email ||
           "",
-        mobile: fromBackend.contactInfo?.mobile || "",
         linkedin: fromBackend.contactInfo?.linkedin || user?.profileUrl || "",
       },
       summary:
@@ -511,32 +512,39 @@ const handlePDF = async () => {
 
 
 
+<div className="button-row">
+
+  <button
+    onClick={handlePDF}
+    disabled={localLoading}
+    className={`btn-theme ${localLoading ? "btn-disabled" : ""}`}
+  >
+    {localLoading ? "Generating…" : "Download PDF"}
+  </button>
+
+  <button
+    onClick={showEditorPanel ? cancelPanelEdit : beginPanelEdit}
+    className="btn-theme btn-brown"
+  >
+    {showEditorPanel ? "Cancel Edit" : "Edit Resume"}
+  </button>
+
+  {showEditorPanel && (
+    <button
+      onClick={savePanelEdit}
+      className="btn-theme btn-dark-brown"
+    >
+      Save Edits
+    </button>
+  )}
+
+</div>
+
 
 
             
 
-            <button
-              style={{ ...styles.primaryBtn, ...styles.pdfBtn }}
-              onClick={handlePDF}
-              disabled={localLoading}
-            >
-              {localLoading ? "Generating…" : "Download PDF"}
-            </button>
-
-            <button
-              style={{ ...styles.primaryBtn, ...styles.editBtn }}
-              onClick={showEditorPanel ? cancelPanelEdit : beginPanelEdit}
-            >
-              {showEditorPanel ? "Cancel Edit" : "Edit Resume"}
-            </button>
-            {showEditorPanel && (
-              <button
-                style={{ ...styles.primaryBtn, ...styles.generateBtn }}
-                onClick={savePanelEdit}
-              >
-                Save Edits
-              </button>
-            )}
+        
           </div>
         </div>
       </div>
@@ -588,31 +596,8 @@ const handlePDF = async () => {
             Back to Resume
           </button>
 
-          <button
-            style={styles.actionBtn}
-            onClick={() => {
-              navigator.clipboard.writeText(portfolioCode).then(() => alert("Backend code copied!"));
-            }}
-            disabled={!portfolioCode}
-          >
-            Copy Backend Code
-          </button>
 
-          <button
-            style={styles.actionBtn}
-            onClick={() => {
-              const blob = new Blob([portfolioCode], { type: "text/html" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "portfolio_backend.html";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            disabled={!portfolioCode}
-          >
-            Download Backend HTML
-          </button>
+
 
           <button style={styles.actionBtn} onClick={downloadPortfolioPreview}>
             Download Preview HTML
@@ -621,10 +606,7 @@ const handlePDF = async () => {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <div style={styles.codePreview}>
-          <h3 style={{ margin: "0 0 12px", color: "#fff" }}>Generated Code</h3>
-          <pre style={styles.codeBlock}>{portfolioCode || "Click “Generate Portfolio” first."}</pre>
-        </div>
+        
 
         <div style={{ background: "#fff", borderRadius: 8, padding: 16 }}>
           <h3 style={{ margin: "0 0 12px" }}>Live Preview</h3>
@@ -650,7 +632,7 @@ const handlePDF = async () => {
     top: "50%",
     left: 20,
     transform: "translateY(-50%)",
-    background: "#6D28D9",
+    background: "#8e5822ff",
     width: 55,
     height: 55,
     borderRadius: "50%",
@@ -811,17 +793,7 @@ const handlePDF = async () => {
                       }))
                     }
                   />
-                  <input
-                    style={styles.input}
-                    placeholder="Mobile"
-                    value={resumeData.contactInfo.mobile}
-                    onChange={e =>
-                      setResumeData(prev => ({
-                        ...prev,
-                        contactInfo: { ...prev.contactInfo, mobile: e.target.value },
-                      }))
-                    }
-                  />
+         
                   <input
                     style={styles.input}
                     placeholder="LinkedIn"
@@ -858,7 +830,7 @@ const handlePDF = async () => {
     <button
       onClick={() => setShowSidebar(false)}
       style={{
-        background: "#ef4444",
+        background: "#501f1fff",
         border: "none",
         padding: "8px 16px",
         color: "white",
@@ -882,7 +854,7 @@ const handlePDF = async () => {
         width: "100%",
         padding: "12px",
         marginBottom: 15,
-        background: "#6D28D9",
+        background: "#b67738ff",
         color: "white",
         border: "none",
         borderRadius: 6,
@@ -894,12 +866,12 @@ const handlePDF = async () => {
 
     {/* ATS Score */}
     <button
-      onClick={() => window.open("https://resumeworded.com/score", "_blank")}
+      onClick={() => window.open("https://novoresume.com/tools/ats-resume-checker", "_blank")}
       style={{
         width: "100%",
         padding: "12px",
         marginBottom: 15,
-        background: "#4F46E5",
+        background: "#9d6833ff",
         color: "white",
         border: "none",
         borderRadius: 6,
@@ -915,7 +887,7 @@ const handlePDF = async () => {
       style={{
         width: "100%",
         padding: "12px",
-        background: "#10B981",
+        background: "#8E5822",
         color: "white",
         border: "none",
         borderRadius: 6,
