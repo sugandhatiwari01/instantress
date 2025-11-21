@@ -19,8 +19,7 @@ const Header = () => {
       margin: '0 auto'
     }}>
       <Link to="/" style={{ fontWeight: 'bold', fontSize: '1.5rem', textDecoration: 'none', color: '#333' }}>
-        ResumeAI
-      </Link>
+Seed      </Link>
 
       <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <Link to="/input">Build Resume</Link>

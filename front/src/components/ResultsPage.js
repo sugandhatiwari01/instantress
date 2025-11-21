@@ -595,31 +595,8 @@ const handlePDF = async () => {
             Back to Resume
           </button>
 
-          <button
-            style={styles.actionBtn}
-            onClick={() => {
-              navigator.clipboard.writeText(portfolioCode).then(() => alert("Backend code copied!"));
-            }}
-            disabled={!portfolioCode}
-          >
-            Copy Backend Code
-          </button>
 
-          <button
-            style={styles.actionBtn}
-            onClick={() => {
-              const blob = new Blob([portfolioCode], { type: "text/html" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "portfolio_backend.html";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            disabled={!portfolioCode}
-          >
-            Download Backend HTML
-          </button>
+
 
           <button style={styles.actionBtn} onClick={downloadPortfolioPreview}>
             Download Preview HTML
@@ -657,7 +634,7 @@ const handlePDF = async () => {
     top: "50%",
     left: 20,
     transform: "translateY(-50%)",
-    background: "#6D28D9",
+    background: "#8e5822ff",
     width: 55,
     height: 55,
     borderRadius: "50%",
@@ -855,7 +832,7 @@ const handlePDF = async () => {
     <button
       onClick={() => setShowSidebar(false)}
       style={{
-        background: "#ef4444",
+        background: "#501f1fff",
         border: "none",
         padding: "8px 16px",
         color: "white",
@@ -879,7 +856,7 @@ const handlePDF = async () => {
         width: "100%",
         padding: "12px",
         marginBottom: 15,
-        background: "#6D28D9",
+        background: "#b67738ff",
         color: "white",
         border: "none",
         borderRadius: 6,
@@ -896,7 +873,7 @@ const handlePDF = async () => {
         width: "100%",
         padding: "12px",
         marginBottom: 15,
-        background: "#4F46E5",
+        background: "#9d6833ff",
         color: "white",
         border: "none",
         borderRadius: 6,
@@ -912,7 +889,7 @@ const handlePDF = async () => {
       style={{
         width: "100%",
         padding: "12px",
-        background: "#10B981",
+        background: "#8E5822",
         color: "white",
         border: "none",
         borderRadius: 6,

@@ -46,7 +46,7 @@ module.exports = (data = {}) => {
       </div>
 
       <div class="screen" id="screen">
-        <div><span class="prompt">> </span><strong>Welcome, ${esc(githubUsername)}</strong><span class="cursor"></span></div>
+        <div><span class="prompt">> </span><strong>${esc(githubUsername)}</strong><span class="cursor"></span></div>
         <div><span class="prompt">> </span><span class="muted">About:</span> ${esc(summary || "I build simple things that scale.")}</div>
 
         ${
