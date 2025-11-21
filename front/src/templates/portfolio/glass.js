@@ -204,7 +204,7 @@ footer a:hover { color: white; }
   <!-- HEADER -->
   <div class="wave-header">
     <h1>${esc(githubUsername)}'s Portfolio</h1>
-    <p>Diving deep into development — exploring waves of creativity.</p>
+    
   </div>
 
   <!-- SUMMARY -->
